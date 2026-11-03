@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>极简记账本</title>
-    <!-- 已删除 echarts，加快网页打开速度 -->
     <style>
         :root {
             --primary: #93B7DF; --primary-light: #E8F1FA; --secondary: #F3E1A0; 
@@ -30,6 +29,8 @@
         .stat-val.expense { color: var(--text-main); }
         .stat-val.income { color: var(--green); }
         .stat-val.balance { color: var(--red); }
+        
+        /* 发薪日卡片样式 */
         .payday-card { background: #FDF9EC; border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(243, 225, 160, 0.2); border: 1px solid #F3E1A0; overflow: hidden; touch-action: pan-y; }
         .payday-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #8A6D3B; font-weight: bold; margin-bottom: 6px; }
         .payday-nav-btn { cursor: pointer; padding: 0 8px; font-size: 12px; user-select: none; }
@@ -43,6 +44,7 @@
         .payday-day-box.is-today .date-week { color: #D4A017; font-weight: bold; }
         .payday-bottom { display: flex; justify-content: flex-end; align-items: baseline; margin-top: 6px; font-size: 11px; color: #8A6D3B; font-weight: 600; }
         .payday-countdown-val { font-size: 15px; font-weight: 900; color: #D4A017; margin: 0 3px; }
+
         .type-switch { display: flex; background: #F0F2F5; border-radius: 10px; padding: 3px; margin-bottom: 12px; height: 40px; align-items: center; }
         .type-btn { flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text-sub); border-radius: 8px; transition: 0.2s; cursor: pointer; height: 34px; line-height: 34px; }
         .type-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -67,7 +69,6 @@
         .btn { width: 100%; padding: 13px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.1s;}
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(147, 183, 223, 0.3); }
         .btn-primary:active { transform: scale(0.98); }
-        .btn-danger { background: #FEE2E2; color: var(--red); border: 1px solid #FECACA; }
         .bill-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
         .bill-item:last-child { border-bottom: none; }
         .bill-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
@@ -84,6 +85,8 @@
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 20%; color: var(--text-sub); font-size: 10px; transition: 0.2s; cursor: pointer; }
         .nav-item.active { color: var(--primary); font-weight: bold; }
         .nav-icon { font-size: 20px; margin-bottom: 2px; }
+        .month-selector { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: var(--card-bg); padding: 0 15px; border-radius: 10px; font-weight: bold; font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); height: 44px; border: 1px solid var(--border); }
+        .month-btn { padding: 5px 10px; color: var(--primary); font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -93,7 +96,7 @@
                 <div class="overview-title">📊 日常账本</div>
                 <div class="home-month-selector">
                     <span onclick="changeHomeMonth(-1)">◀</span>
-                    <span id="home-month-label">2026年11月</span>
+                    <span id="home-month-label"></span>
                     <span onclick="changeHomeMonth(1)">▶</span>
                 </div>
             </div>
@@ -104,6 +107,16 @@
             </div>
         </div>
         
+        <div class="payday-card" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
+            <div class="payday-header">
+                <span class="payday-nav-btn" onclick="changePaydayWeek(-1)">◀</span>
+                <span id="payday-month-label" style="font-size:12px;"></span>
+                <span class="payday-nav-btn" onclick="changePaydayWeek(1)">▶</span>
+            </div>
+            <div class="payday-week" id="payday-week-container"></div>
+            <div class="payday-bottom"><span id="payday-bottom-text">距离发薪日还有 <span class="payday-countdown-val" id="payday-count">--</span> 天</span></div>
+        </div>
+
         <div class="card">
             <div class="type-switch">
                 <div class="type-btn active" onclick="switchType('expense')">支出</div>
@@ -123,7 +136,7 @@
 
     <div id="page-bills" class="page">
         <div class="month-selector">
-            <div class="month-btn" onclick="changeBillMonth(-1)">◀</div><div id="bill-month-label">2026年11月</div><div class="month-btn" onclick="changeBillMonth(1)">▶</div>
+            <div class="month-btn" onclick="changeBillMonth(-1)">◀</div><div id="bill-month-label"></div><div class="month-btn" onclick="changeBillMonth(1)">▶</div>
         </div>
         <div class="card" style="padding: 0 14px;"><ul id="bill-list" style="list-style: none;"></ul></div>
     </div>
@@ -139,44 +152,51 @@
             { id: '餐饮', name: '餐饮', icon: '🍜', subs: [{name: '正常三餐', icon: '🍱'}, {name: '聚餐', icon: '🍻'}, {name: '奶茶/水果', icon: '🍰'}, {name: '其他', icon: '🥢'}] },
             { id: '购物', name: '购物', icon: '🛍️', subs: [{name: '衣服/鞋子', icon: '👗'}, {name: '日用品', icon: '🧴'}, {name: '美妆', icon: '💄'}, {name: '其他', icon: '🛒'}] },
             { id: '日常', name: '日常', icon: '🧻', subs: [{name: '理发/美甲', icon: '💇'}, {name: '房租/水电', icon: '🏠'}, {name: '话费', icon: '📱'}, {name: '其他', icon: '🧻'}] },
+            { id: '学习', name: '学习', icon: '📚', subs: [{name: '书籍/课程', icon: '📖'}, {name: '软件', icon: '💻'}, {name: '其他', icon: '📚'}] },
+            { id: '交通', name: '交通', icon: '🚗', subs: [{name: '地铁', icon: '🚇'}, {name: '高铁', icon: '🚄'}, {name: '其他', icon: '🚗'}] },
+            { id: '健康', name: '健康', icon: '💊', subs: [{name: '运动', icon: '🏃'}, {name: '医院', icon: '🏥'}, {name: '其他', icon: '💊'}] },
+            { id: '旅行', name: '旅行', icon: '🧳', subs: [{name: '餐饮', icon: '🍽️'}, {name: '住宿', icon: '🏨'}, {name: '交通', icon: '✈️'}, {name: '其他', icon: '🧳'}] },
+            { id: '人情', name: '人情', icon: '🎁', subs: [{name: '礼物/礼金', icon: '🎁'}, {name: '长辈', icon: '👴'}, {name: '请客', icon: '🥂'}, {name: '其他', icon: '🧧'}] },
             { id: '其他', name: '其他', icon: '❓', subs: [{name: '其他', icon: '❓'}] }
         ],
         income: [
             { id: '工资', name: '工资', icon: '💰', subs: [{name: '工资收入', icon: '💰'}] },
-            { id: '理财', name: '理财', icon: '📈', subs: [{name: '股票', icon: '📈'}, {name: '基金', icon: '📊'}, {name: '其他', icon: '📉'}] }
+            { id: '理财', name: '理财', icon: '📈', subs: [{name: '股票', icon: '📈'}, {name: '基金', icon: '📊'}, {name: '其他', icon: '📉'}] },
+            { id: '其他收入', name: '其他', icon: '🪙', subs: [{name: '其他收入', icon: '🪙'}] }
         ]
     };
 
     let state = {
         type: 'expense', cat1: '餐饮', cat2: '正常三餐', nature: '必须开销',
-        homeDate: new Date(), billsDate: new Date(), billSort: 'date-desc'
+        homeDate: new Date(), paydayWeekStart: null, billsDate: new Date()
     };
     
     let records = JSON.parse(localStorage.getItem('app_records') || '[]');
     let deletedRecords = JSON.parse(localStorage.getItem('app_deleted_records') || '[]');
     let isSyncing = false; 
+    let touchStartX = 0;
 
     function init() {
         document.getElementById('input-date').valueAsDate = new Date();
         renderCategories(); 
         updateHomeOverview(); 
-        fillAmountFromURL(); 
+        resetPaydayWeek();
+        renderPaydayWeek();
+        updateRealCountdown();
+        fillAmountFromURL(); // 从链接提取金额
     }
 
-    // 容错率极高的读取 URL 金额函数
+    // --- 从URL解析金额 ---
     function fillAmountFromURL() {
         const params = new URLSearchParams(window.location.search);
         const rawAmount = params.get('amount');
-        
         if (rawAmount) {
-            // 无论快捷指令传过来的是 "-26.90" 还是 "26.90"，或者带有空格
-            // 这里用正则提取出第一个合法的纯数字（带小数）
+            // 匹配数字，忽略负号和其他字符
             const match = rawAmount.match(/\d+(\.\d{1,2})?/);
             if (match) {
                 const amountInput = document.getElementById('input-amount');
                 if (amountInput) {
                     amountInput.value = match[0];
-                    // 让输入框闪烁一下提醒用户填入成功
                     amountInput.style.backgroundColor = '#E8F1FA';
                     setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1000);
                 }
@@ -184,6 +204,7 @@
         }
     }
 
+    // --- 防止重复触发的安全跳转 ---
     function goToShortcut(name) {
         if (isSyncing) return;
         isSyncing = true;
@@ -191,12 +212,91 @@
         setTimeout(() => { isSyncing = false; }, 3000); 
     }
 
+    // --- 发薪日日历逻辑 ---
+    function getAdjustedPayday(year, month) { 
+        let d = new Date(year, month, 8); 
+        let dayOfWeek = d.getDay(); 
+        if (dayOfWeek === 6) { d.setDate(7); } 
+        else if (dayOfWeek === 0) { d.setDate(6); } 
+        d.setHours(0, 0, 0, 0); 
+        return d; 
+    }
+    function resetPaydayWeek() { 
+        const y = state.homeDate.getFullYear(); 
+        const m = state.homeDate.getMonth(); 
+        const payday = getAdjustedPayday(y, m); 
+        const start = new Date(payday); 
+        start.setDate(payday.getDate() - payday.getDay()); 
+        state.paydayWeekStart = start; 
+    }
+    function changePaydayWeek(offset) { 
+        if (!state.paydayWeekStart) return; 
+        state.paydayWeekStart.setDate(state.paydayWeekStart.getDate() + (offset * 7)); 
+        renderPaydayWeek(); 
+    }
+    function renderPaydayWeek() {
+        if (!state.paydayWeekStart) return;
+        const startDate = new Date(state.paydayWeekStart), endDate = new Date(state.paydayWeekStart);
+        endDate.setDate(endDate.getDate() + 6);
+        const monthLabel = document.getElementById('payday-month-label');
+        if (startDate.getMonth() !== endDate.getMonth()) monthLabel.innerText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月-${endDate.getMonth() + 1}月`;
+        else monthLabel.innerText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月`;
+        
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        const weekDaysShort = ['日', '一', '二', '三', '四', '五', '六'];
+        const container = document.getElementById('payday-week-container'); container.innerHTML = '';
+        
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(state.paydayWeekStart); d.setDate(state.paydayWeekStart.getDate() + i); d.setHours(0, 0, 0, 0);
+            const isPayday = d.getTime() === getAdjustedPayday(d.getFullYear(), d.getMonth()).getTime();
+            const isToday = d.getTime() === now.getTime();
+            let boxClass = 'payday-day-box'; if (isPayday) boxClass += ' is-payday'; if (isToday) boxClass += ' is-today';
+            container.innerHTML += `<div class="${boxClass}"><div class="date-num">${d.getDate()}</div><div class="date-week">${weekDaysShort[i]}</div></div>`;
+        }
+    }
+    function updateRealCountdown() {
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        let targetMonth = now.getMonth(), targetYear = now.getFullYear();
+        let paydayThisMonth = getAdjustedPayday(targetYear, targetMonth);
+        if (now > paydayThisMonth) { 
+            targetMonth++; 
+            if (targetMonth > 11) { targetMonth = 0; targetYear++; } 
+            paydayThisMonth = getAdjustedPayday(targetYear, targetMonth); 
+        }
+        const diffDays = Math.ceil((paydayThisMonth - now) / (1000 * 60 * 60 * 24));
+        const bottomTextEl = document.getElementById('payday-bottom-text');
+        if (diffDays === 0) bottomTextEl.innerHTML = `🎉 今天发工资啦！`; 
+        else bottomTextEl.innerHTML = `距离发薪日还有 <span class="payday-countdown-val">${diffDays}</span> 天`;
+    }
+    function handleTouchStart(event) { touchStartX = event.touches[0].clientX; }
+    function handleTouchEnd(event) { 
+        let touchEndX = event.changedTouches[0].clientX; 
+        if (touchStartX - touchEndX > 50) changePaydayWeek(1); 
+        else if (touchEndX - touchStartX > 50) changePaydayWeek(-1); 
+    }
+
+    // --- 核心业务逻辑 ---
     function updateHomeOverview() {
         const y = state.homeDate.getFullYear(), m = state.homeDate.getMonth();
         document.getElementById('home-month-label').innerText = `${y}年${m + 1}月`;
+        
         let totalExp = 0; 
-        records.forEach(r => { const d = new Date(r.date); if (d.getFullYear() === y && d.getMonth() === m && r.type === 'expense') totalExp += r.amount; });
+        let totalInc = 0;
+        records.forEach(r => { 
+            const d = new Date(r.date); 
+            if (d.getFullYear() === y && d.getMonth() === m) {
+                if (r.type === 'expense') totalExp += r.amount;
+                if (r.type === 'income') totalInc += r.amount;
+            }
+        });
+        
         document.getElementById('home-total-exp').innerText = totalExp.toFixed(2);
+        document.getElementById('home-total-inc').innerText = totalInc.toFixed(2);
+        
+        // 这里原本是计算预算的，现在暂时显示收入作为参考，或者可以留空 0.00
+        const balEl = document.getElementById('home-total-bal'); 
+        balEl.innerText = (totalInc - totalExp).toFixed(2); 
+        balEl.style.color = (totalInc - totalExp) < 0 ? 'var(--red)' : 'var(--green)';
     }
 
     function switchPage(pageId) {
@@ -207,6 +307,17 @@
 
         if (pageId === 'add') { updateHomeOverview(); }
         if (pageId === 'bills') renderBills();
+    }
+
+    function changeHomeMonth(offset) { 
+        state.homeDate.setMonth(state.homeDate.getMonth() + offset); 
+        updateHomeOverview(); 
+        resetPaydayWeek(); 
+        renderPaydayWeek(); 
+    }
+    function changeBillMonth(offset) { 
+        state.billsDate.setMonth(state.billsDate.getMonth() + offset); 
+        renderBills(); 
     }
 
     function switchType(type) { 
@@ -276,7 +387,7 @@
             remarkInput.value = ''; 
             document.getElementById('input-date').valueAsDate = new Date(); 
             
-            // 防止 Safari 后台限流导致重复触发
+            // 改用 confirm 防抖跳转
             if (confirm('✅ 记账成功！数据已复制。\n点击“确定”跳转到快捷指令同步到 Numbers。')) {
                 goToShortcut('追加记账到Numbers');
             }
@@ -304,7 +415,6 @@
         const typeStr = record.type === 'expense' ? '支出' : '收入';
         const safeRemarkStr = (record.remark || '无').replace(/,/g, '，');
         
-        // 9 个字段，与 Numbers 表格对应
         const clipData = `已删除,${record.id},${dateStr},${typeStr},${record.category1},${record.category2},${record.nature},${record.amount.toFixed(2)},${safeRemarkStr}`;
 
         navigator.clipboard.writeText(clipData).then(() => {
@@ -339,10 +449,7 @@
         });
     }
 
-    // 月份切换逻辑
-    function changeHomeMonth(offset) { state.homeDate.setMonth(state.homeDate.getMonth() + offset); updateHomeOverview(); }
-    function changeBillMonth(offset) { state.billsDate.setMonth(state.billsDate.getMonth() + offset); renderBills(); }
-
+    // 启动
     init();
 </script>
 </body>
