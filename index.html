@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>极简记账本</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <style>
@@ -24,13 +26,11 @@
         .home-month-selector { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; color: #4A78B0; background: #DCEAF7; padding: 4px 10px; border-radius: 12px; cursor: pointer;}
         .home-month-selector span { padding: 0 4px; }
         
-        /* 严格统一的 3x2 六宫格 */
         .overview-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 10px; text-align: center; }
         .overview-stats .stat-item { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .overview-stats .stat-label { font-size: 12px; color: #6A82A0; margin-bottom: 4px; white-space: nowrap; }
         .overview-stats .stat-val { font-size: 18px; font-weight: 800; line-height: 1.2; }
         
-        /* 自定义指标颜色 */
         .color-red { color: var(--red) !important; }
         .color-green { color: var(--green) !important; }
         .color-black { color: var(--text-main) !important; }
@@ -128,13 +128,11 @@
         
         .data-textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 12px; color: var(--text-sub); background: #FAFAFA; resize: none; outline: none; font-family: monospace; margin-top: 10px; }
         
-        /* 预算表专用样式（修复首列透底重叠） */
         .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; background: var(--card-bg); padding-bottom: 10px; border: 1px solid var(--border); }
         table { width: 100%; border-collapse: collapse; min-width: 900px; text-align: center; }
         th, td { padding: 12px 6px; border-bottom: 1px solid #F0F0F0; font-size: 13px; white-space: nowrap; }
         th { background: #FAFAFA; color: var(--text-sub); font-weight: 600; position: sticky; top: 0; z-index: 10; }
         
-        /* 强制纯色+阴影覆盖，彻底阻断底层重叠 */
         .table-fixed-col { 
             text-align: left; font-weight: 600; position: sticky; left: 0; 
             background-color: #FFFFFF !important; 
@@ -170,6 +168,10 @@
         .cell-ratio { font-size: 10px; color: var(--text-sub); white-space: nowrap; margin-top: 2px;}
         .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
         .chart-box { width: 100%; height: 300px; }
+
+        .bio-btn { margin: 8px 0 4px; padding: 11px; background: var(--primary-light); border-radius: 10px; color: var(--primary); font-weight: 700; cursor: pointer; text-align: center; font-size: 14px; border: 1px dashed var(--primary); user-select: none; }
+        .bio-btn:active { background: #d8e8f7; }
+        .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.78); color: white; padding: 12px 22px; border-radius: 10px; font-size: 14px; z-index: 99999; pointer-events: none; opacity: 1; transition: opacity 0.3s; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -288,6 +290,13 @@
             <textarea id="export-textarea" class="data-textarea" readonly placeholder="生成的文本会显示在这里，您可以直接长按复制..."></textarea>
         </div>
         <div class="card">
+            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">导出预算数据</h3>
+            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">导出各年份的存款比例与分类预算，可用 Excel / Numbers 打开备份。仅导出您手动设置过的数值，未设置的月份留空。</p>
+            <button class="btn btn-primary" onclick="downloadBudgetCSV()">📥 下载预算表格文件</button>
+            <button class="btn btn-primary" style="margin-top:10px;" onclick="generateBudgetText()">📋 生成预算复制文本</button>
+            <textarea id="budget-export-textarea" class="data-textarea" readonly placeholder="生成的预算文本会显示在这里..."></textarea>
+        </div>
+        <div class="card">
             <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">导入数据恢复</h3>
             <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">选择之前导出的 `.csv` 文件，数据将自动追加到现有账单中。</p>
             <input type="file" id="import-file" accept=".csv, text/csv" style="display: none;" onchange="importData(event)">
@@ -298,6 +307,11 @@
             <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">账单、统计、预算和我的页面需要密码才能查看。初始默认密码为 <b>1234</b>。</p>
             <button class="btn btn-primary" onclick="openChangePasswordModal()">🔑 修改查看密码</button>
             <button class="btn btn-primary" style="margin-top: 10px;" onclick="openSecurityModal()">🛡️ 设置/修改密保问题</button>
+        </div>
+        <div class="card">
+            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">🔐 面容 / 指纹解锁</h3>
+            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">在 iPhone 上使用 Face ID 或 Touch ID 快速解锁，无需每次输入密码。需通过 HTTPS 或 localhost 访问，并已在系统中录入面容/指纹。</p>
+            <button class="btn btn-primary" onclick="manageBiometric()">启用人脸 / 指纹解锁</button>
         </div>
         <div class="card">
             <h3 style="font-size:15px; margin-bottom:10px; font-weight:600; color: var(--red);">危险操作</h3>
@@ -320,6 +334,7 @@
             <div class="modal-title" id="modalTitle">🔒 请输入密码</div>
             <input type="password" id="modalPasswordInput" class="modal-input" inputmode="numeric" maxlength="8" placeholder="••••" style="font-size: 24px; letter-spacing: 8px;">
             <div class="forgot-pwd" onclick="handleForgotPassword()">忘记密码？</div>
+            <div id="bio-unlock-btn" class="bio-btn" style="display:none;"></div>
             <div id="modalErrorMsg" class="modal-error" style="text-align:center;">密码错误，请重试</div>
             <div class="modal-actions">
                 <button class="btn" style="background:#F0F2F5; color:#333; margin-top:0;" onclick="closePasswordModal()">取消</button>
@@ -368,7 +383,6 @@
     </div>
 
 <script>
-    // 安全容错启动机制
     if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().then(granted => {}); }
     function safeParse(jsonStr, defaultVal) { 
         try { 
@@ -415,9 +429,18 @@
     let touchStartX = 0;
     let monthlyChart = null, yearlyChart = null;
     let isSyncing = false; 
+    let bioCredentialId = localStorage.getItem('app_bio_cred_id') || null;
 
     function init() {
         try {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('synced') === '1') {
+                    setTimeout(() => showToast('✅ 已同步到 Numbers'), 300);
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            } catch(e) {}
+
             document.getElementById('input-date').valueAsDate = new Date();
             renderCategories(); 
             renderBudgetTable(); 
@@ -433,6 +456,15 @@
                 if (yearlyChart) yearlyChart.resize();
             });
         } catch(e) { console.error("Init Error:", e); }
+    }
+
+    function showToast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.innerText = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; }, 1500);
+        setTimeout(() => { t.remove(); }, 1900);
     }
 
     function fillAmountFromURL() {
@@ -453,11 +485,24 @@
         } catch(e){}
     }
 
+    // === 修改：webapp:// 回跳，直接唤起主屏幕 App ===
     function goToShortcut(name) {
         if (isSyncing) return;
         isSyncing = true;
-        window.location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(name);
-        setTimeout(() => { isSyncing = false; }, 3000); 
+        
+        const isHttp = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+        let url;
+        if (isHttp) {
+            const currentUrl = window.location.href.split('#')[0].split('?')[0];
+            const hostAndPath = currentUrl.replace(/^https?:\/\//, '');
+            const callbackUrl = 'webapp://' + hostAndPath;
+            url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(name) 
+                + "&x-success=" + encodeURIComponent(callbackUrl);
+        } else {
+            url = "shortcuts://run-shortcut?name=" + encodeURIComponent(name);
+        }
+        window.location.href = url;
+        setTimeout(() => { isSyncing = false; }, 8000);
     }
 
     // --- 预算核心逻辑 ---
@@ -650,12 +695,7 @@
 
     function switchPage(pageId) {
         if ((pageId === 'bills' || pageId === 'dashboard' || pageId === 'budget' || pageId === 'data') && !state.isUnlocked) {
-            state.pendingPage = pageId;
-            const pageNames = { bills: '账单', dashboard: '统计', budget: '预算', data: '我的' };
-            document.getElementById('modalTitle').innerText = `🔒 查看${pageNames[pageId]}需验证`;
-            document.getElementById('modalPasswordInput').value = ''; document.getElementById('modalErrorMsg').style.display = 'none';
-            document.getElementById('passwordModal').classList.add('active');
-            setTimeout(() => document.getElementById('modalPasswordInput').focus(), 100);
+            showPasswordModal(pageId);
             return;
         }
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -677,10 +717,48 @@
         if (pageId === 'data') { initExportDates(); previewData(); renderDeletedRecords(); } 
     }
 
+    async function showPasswordModal(pageId) {
+        state.pendingPage = pageId;
+        const pageNames = { bills: '账单', dashboard: '统计', budget: '预算', data: '我的' };
+        document.getElementById('modalTitle').innerText = `🔒 查看${pageNames[pageId]}需验证`;
+        document.getElementById('modalPasswordInput').value = '';
+        document.getElementById('modalErrorMsg').style.display = 'none';
+
+        const bioBtn = document.getElementById('bio-unlock-btn');
+        let supported = false;
+        try { supported = canUseWebAuthn() && await isBiometricAvailable(); } catch(e) { supported = false; }
+
+        if (supported && bioCredentialId) {
+            bioBtn.innerHTML = '👤 使用面容 / 指纹解锁';
+            bioBtn.style.display = 'block';
+            bioBtn.onclick = tryBiometricUnlock;
+        } else if (supported && !bioCredentialId) {
+            bioBtn.innerHTML = '👤 首次使用？点击录入面容 / 指纹';
+            bioBtn.style.display = 'block';
+            bioBtn.onclick = async () => {
+                const ok = await registerBiometric();
+                if (ok) {
+                    bioBtn.innerHTML = '👤 使用面容 / 指纹解锁';
+                    bioBtn.onclick = tryBiometricUnlock;
+                }
+            };
+        } else {
+            bioBtn.style.display = 'none';
+        }
+
+        document.getElementById('passwordModal').classList.add('active');
+        setTimeout(() => document.getElementById('modalPasswordInput').focus(), 120);
+    }
+
     // --- 安全验证 ---
     function verifyPasswordAndProceed() { const input = document.getElementById('modalPasswordInput').value; if (input === appPassword) { state.isUnlocked = true; document.getElementById('passwordModal').classList.remove('active'); if (state.pendingPage) { switchPage(state.pendingPage); state.pendingPage = null; } } else { document.getElementById('modalErrorMsg').style.display = 'block'; document.getElementById('modalPasswordInput').value = ''; document.getElementById('modalPasswordInput').focus(); } }
     function closePasswordModal() { document.getElementById('passwordModal').classList.remove('active'); state.pendingPage = null; }
-    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') state.isUnlocked = false; });
+
+    document.addEventListener('visibilitychange', function() { 
+        if (document.visibilityState === 'hidden' && !isSyncing) {
+            state.isUnlocked = false;
+        }
+    });
     
     function openChangePasswordModal() { 
         document.getElementById('settingsTitle').innerText = '修改查看密码'; 
@@ -729,6 +807,138 @@
         if (state.pendingPage) { switchPage(state.pendingPage); state.pendingPage = null; }
     }
     function closeForgotModal() { document.getElementById('forgotModal').classList.remove('active'); }
+
+    // --- WebAuthn 生物识别 ---
+    function canUseWebAuthn() {
+        if (window.location.protocol === 'file:') return false;
+        if (!window.isSecureContext) return false;
+        return !!(window.PublicKeyCredential && navigator.credentials);
+    }
+
+    async function isBiometricAvailable() {
+        if (!canUseWebAuthn()) return false;
+        try {
+            return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        } catch(e) { return false; }
+    }
+
+    function base64urlEncode(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function base64urlDecode(str) {
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        while (str.length % 4) str += '=';
+        const binary = atob(str);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+    async function registerBiometric() {
+        if (!canUseWebAuthn()) {
+            alert('当前环境不支持生物识别。\n\n请确保通过 HTTPS 或 localhost 访问，并使用 Safari / Chrome。');
+            return false;
+        }
+        if (!(await isBiometricAvailable())) {
+            alert('设备不支持面容 / 指纹识别。\n\n请在系统设置中录入 Face ID / Touch ID 后重试。');
+            return false;
+        }
+        try {
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+            const credential = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: { name: '极简记账本' },
+                    user: {
+                        id: new Uint8Array(16),
+                        name: 'local-user',
+                        displayName: '本地用户'
+                    },
+                    pubKeyCredParams: [
+                        { type: 'public-key', alg: -7 },
+                        { type: 'public-key', alg: -257 }
+                    ],
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'required',
+                        residentKey: 'preferred'
+                    },
+                    timeout: 60000,
+                    attestation: 'none'
+                }
+            });
+            bioCredentialId = base64urlEncode(credential.rawId);
+            localStorage.setItem('app_bio_cred_id', bioCredentialId);
+            showToast('✅ 面容 / 指纹解锁已启用');
+            return true;
+        } catch (err) {
+            if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+                console.warn('registerBiometric failed:', err);
+                alert('录入失败：' + (err.message || err.name));
+            }
+            return false;
+        }
+    }
+
+    async function tryBiometricUnlock() {
+        if (!bioCredentialId) return;
+        if (!(await isBiometricAvailable())) {
+            alert('当前设备不支持生物识别');
+            return;
+        }
+        try {
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    allowCredentials: [{
+                        id: base64urlDecode(bioCredentialId),
+                        type: 'public-key',
+                        transports: ['internal']
+                    }],
+                    userVerification: 'required',
+                    timeout: 60000
+                }
+            });
+            state.isUnlocked = true;
+            document.getElementById('passwordModal').classList.remove('active');
+            if (state.pendingPage) {
+                switchPage(state.pendingPage);
+                state.pendingPage = null;
+            }
+        } catch (err) {
+            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+                // 用户取消
+            } else {
+                console.warn('biometric get failed:', err);
+                alert('生物识别失败，请使用密码解锁');
+            }
+        }
+    }
+
+    async function manageBiometric() {
+        if (!canUseWebAuthn()) {
+            alert('当前环境不支持生物识别。\n\n请确保：\n1. 通过 HTTPS 或 localhost 访问（不能是 file://）\n2. 使用 Safari 或 Chrome 浏览器');
+            return;
+        }
+        if (!(await isBiometricAvailable())) {
+            alert('设备不支持面容 / 指纹识别。\n\n请先在系统设置中录入 Face ID / Touch ID。');
+            return;
+        }
+        if (bioCredentialId) {
+            if (confirm('✅ 面容 / 指纹解锁已启用。\n\n点击"确定"重新录入（更换新面容或指纹）；\n点击"取消"保持不变。')) {
+                await registerBiometric();
+            }
+        } else {
+            await registerBiometric();
+        }
+    }
 
     // --- 记账表单 ---
     function updateDashLabels() { document.getElementById('dash-month-label').innerText = `${state.dashDate.getFullYear()}年${state.dashDate.getMonth() + 1}月`; document.getElementById('dash-year-label').innerText = `${state.dashYear}年`; }
@@ -828,7 +1038,6 @@
         if (state.dashMode === 'monthly') renderMonthlyDashboard(); else renderYearlyDashboard();
     }
 
-    // --- 双层嵌套环形图数据构建 ---
     function getNestedPieData(records) {
         let level1Map = {};
         let level2Map = {};
@@ -899,7 +1108,6 @@
         mRecords.filter(r => r.type === 'expense').forEach(r => { const day = new Date(r.date).getDate(); dailyExp[day] = (dailyExp[day] || 0) + r.amount; });
         for(let i=1; i<=new Date(y, m+1, 0).getDate(); i++) { const amt = dailyExp[i] ? dailyExp[i].toFixed(0) : ''; calGrid.innerHTML += `<div class="calendar-cell"><div class="calendar-day">${i}</div>${amt ? `<div class="calendar-amount has-spend">${amt}</div>` : ''}</div>`; }
 
-        // --- 双层嵌套环形图 ---
         try {
             if (!monthlyChart) monthlyChart = echarts.init(document.getElementById('monthly-sunburst-chart'));
             let { level1Data, level2Data, colorMap, level2Colors } = getNestedPieData(mRecords);
@@ -911,18 +1119,18 @@
                     {
                         name: '一级分类',
                         type: 'pie',
-                        radius: [0, '50%'], // 放大内圈
+                        radius: [0, '50%'],
                         label: { position: 'inner', fontSize: 11, color: '#fff', formatter: '{b}' },
-                        itemStyle: { borderColor: '#fff', borderWidth: 1 }, // 极细白线分割
+                        itemStyle: { borderColor: '#fff', borderWidth: 1 },
                         data: level1Data.length ? level1Data.map(d => ({...d, itemStyle: {color: colorMap[d.name], borderColor:'#fff', borderWidth:1}})) : [{name:'无数据', value:1, itemStyle:{color:'#eee'}}]
                     },
                     {
                         name: '二级分类',
                         type: 'pie',
-                        radius: ['50%', '70%'], // 紧贴内圈
+                        radius: ['50%', '70%'],
                         label: { show: true, formatter: '{b}\n{d}%', color: '#666', fontSize: 11 },
                         labelLine: { show: true, length: 10, length2: 10 },
-                        itemStyle: { borderColor: '#fff', borderWidth: 1 }, // 极细白线分割
+                        itemStyle: { borderColor: '#fff', borderWidth: 1 },
                         data: level2Data.length ? level2Data.map((d, i) => ({...d, itemStyle: {color: level2Colors[i], borderColor:'#fff', borderWidth:1}})) : [{name:'', value:1, itemStyle:{color:'#eee'}}]
                     }
                 ]
@@ -1005,7 +1213,6 @@
             </div>
         `;
 
-        // --- 双层嵌套环形图 ---
         try {
             if (!yearlyChart) yearlyChart = echarts.init(document.getElementById('yearly-sunburst-chart'));
             let { level1Data, level2Data, colorMap, level2Colors } = getNestedPieData(yRecords);
@@ -1017,18 +1224,18 @@
                     {
                         name: '一级分类',
                         type: 'pie',
-                        radius: [0, '50%'], // 放大内圈
+                        radius: [0, '50%'],
                         label: { position: 'inner', fontSize: 11, color: '#fff', formatter: '{b}' },
-                        itemStyle: { borderColor: '#fff', borderWidth: 1 }, // 极细白线分割
+                        itemStyle: { borderColor: '#fff', borderWidth: 1 },
                         data: level1Data.length ? level1Data.map(d => ({...d, itemStyle: {color: colorMap[d.name], borderColor:'#fff', borderWidth:1}})) : [{name:'无数据', value:1, itemStyle:{color:'#eee'}}]
                     },
                     {
                         name: '二级分类',
                         type: 'pie',
-                        radius: ['50%', '70%'], // 紧贴内圈
+                        radius: ['50%', '70%'],
                         label: { show: true, formatter: '{b}\n{d}%', color: '#666', fontSize: 11 },
                         labelLine: { show: true, length: 10, length2: 10 },
-                        itemStyle: { borderColor: '#fff', borderWidth: 1 }, // 极细白线分割
+                        itemStyle: { borderColor: '#fff', borderWidth: 1 },
                         data: level2Data.length ? level2Data.map((d, i) => ({...d, itemStyle: {color: level2Colors[i], borderColor:'#fff', borderWidth:1}})) : [{name:'', value:1, itemStyle:{color:'#eee'}}]
                     }
                 ]
@@ -1102,6 +1309,75 @@
         let csv = 'ID,日期,类型,一级分类,二级分类,性质,金额,备注\n';
         data.forEach(r => { csv += `${r.id},${r.date.substring(0,10)},${r.type==='expense'?'支出':'收入'},${r.category1},${r.category2},${r.nature},${r.amount.toFixed(2)},${(r.remark||'无').replace(/,/g,'，')}\n`; });
         document.getElementById('export-textarea').value = csv; alert('生成成功！请在下方文本框中长按复制。');
+    }
+
+    // --- 预算导出 ---
+    function getStoredBudgetValue(year, month, cat, isRatio) {
+        if (isRatio) {
+            const yr = budgets[year];
+            if (yr && yr.depositRates && yr.depositRates[month - 1] !== undefined) {
+                return yr.depositRates[month - 1];
+            }
+            return '';
+        }
+        const key = `${year}_${month}_${cat}`;
+        return budgets[key] !== undefined ? budgets[key] : '';
+    }
+
+    function getBudgetExportRows() {
+        const yearSet = new Set();
+        Object.keys(budgets).forEach(k => {
+            if (/^\d{4}$/.test(k)) yearSet.add(k);
+            else {
+                const m = k.match(/^(\d{4})_\d+_/);
+                if (m) yearSet.add(m[1]);
+            }
+        });
+        const years = Array.from(yearSet).sort();
+        const catList = CATEGORIES.expense.filter(c => c.id !== '其他');
+        const rows = [];
+        years.forEach(yearStr => {
+            const year = parseInt(yearStr);
+            const rateRow = ['存款比例(%)'];
+            for (let m = 1; m <= 12; m++) rateRow.push(getStoredBudgetValue(year, m, '', true));
+            rows.push([yearStr, ...rateRow]);
+            catList.forEach(cat => {
+                const row = [`${cat.icon} ${cat.name}`];
+                for (let m = 1; m <= 12; m++) row.push(getStoredBudgetValue(year, m, cat.id, false));
+                rows.push([yearStr, ...row]);
+            });
+        });
+        return rows;
+    }
+
+    function buildBudgetCSV() {
+        const rows = getBudgetExportRows();
+        if (rows.length === 0) return '';
+        let csv = '年份,项目,1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月\n';
+        rows.forEach(r => {
+            csv += r.map(cell => {
+                const s = String(cell == null ? '' : cell);
+                return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }).join(',') + '\n';
+        });
+        return csv;
+    }
+
+    function downloadBudgetCSV() {
+        const csv = buildBudgetCSV();
+        if (!csv) return alert('暂无预算数据可导出');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `预算数据_${new Date().toISOString().substring(0, 10)}.csv`;
+        link.click();
+    }
+
+    function generateBudgetText() {
+        const csv = buildBudgetCSV();
+        if (!csv) return alert('暂无预算数据可导出');
+        document.getElementById('budget-export-textarea').value = csv;
+        alert('生成成功！请在下方文本框中长按复制。');
     }
 
     function importData(event) {
