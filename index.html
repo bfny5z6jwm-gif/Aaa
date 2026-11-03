@@ -758,7 +758,6 @@
         if (pageId === 'data') { initExportDates(); previewData(); }
     }
 
-    // 密码相关逻辑保持不变
     function verifyPasswordAndProceed() {
         const input = document.getElementById('modalPasswordInput').value;
         if (input === appPassword) {
@@ -926,24 +925,48 @@
         const dateInput = document.getElementById('input-date');
         const amount = parseFloat(amountInput.value);
         if (!amount || amount <= 0) return alert('请输入正确的金额！');
+
         let selectedDate = new Date();
         if(dateInput.value) { const parts = dateInput.value.split('-'); selectedDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0); }
+
         records.unshift({
-            id: Date.now().toString(), type: state.type, category1: state.cat1, category2: state.cat2,
-            amount: amount, remark: remarkInput.value.trim(), nature: state.nature, date: selectedDate.toISOString()
+            id: Date.now().toString(), 
+            type: state.type, 
+            category1: state.cat1, 
+            category2: state.cat2,
+            amount: amount, 
+            remark: remarkInput.value.trim(), 
+            nature: state.nature, 
+            date: selectedDate.toISOString()
         });
         localStorage.setItem('app_records', JSON.stringify(records));
+        
         updateHomeOverview();
+
         const dateStr = selectedDate.toISOString().substring(0, 10);
         const typeStr = state.type === 'expense' ? '支出' : '收入';
         const remarkStr = remarkInput.value.trim() || '无';
         const clipData = `${dateStr},${typeStr},${state.cat1},${amount.toFixed(2)},${remarkStr}`;
-        navigator.clipboard.writeText(clipData).then(() => {
-            amountInput.value = ''; remarkInput.value = ''; document.getElementById('input-date').valueAsDate = new Date();
-            if (confirm('✅ 记账成功！\n\n是否在后台自动写入 Numbers 表格？')) {
-                window.location.href = "shortcuts://run-shortcut?name=追加记账到Numbers";
-            }
-        }).catch(err => { alert('保存成功！但复制数据失败，请检查浏览器权限。'); });
+
+        // 核心修改：优先写入剪贴板
+        navigator.clipboard.writeText(clipData).catch(err => {
+            console.log('复制失败，可能需要手动触发', err);
+        });
+
+        // 清空输入框
+        amountInput.value = ''; 
+        remarkInput.value = ''; 
+        document.getElementById('input-date').valueAsDate = new Date();
+
+        // 核心修改：直接触发跳转，去掉 confirm 弹窗，防止 Safari 拦截
+        setTimeout(() => {
+            window.location.href = "shortcuts://run-shortcut?name=追加记账到Numbers";
+        }, 100);
+        
+        // 延迟弹出成功提示，防止与跳转冲突
+        setTimeout(() => {
+            alert('✅ 记账成功！正在尝试同步到 Numbers。');
+        }, 500);
     }
 
     function changeBillMonth(offset) { state.billsDate.setMonth(state.billsDate.getMonth() + offset); renderBills(); }
@@ -1034,7 +1057,7 @@
         else renderYearlyDashboard(); 
     }
 
-    // 极致优化：恢复不缩放，显示百分比，使用 requestAnimationFrame 延迟渲染
+    // 图表渲染优化
     function renderSunburstChart(domId, year, month = null) {
         const chartDom = document.getElementById(domId);
         if (!chartDom) return;
@@ -1080,7 +1103,6 @@
         }
 
         const option = {
-            // 彻底关闭动画，避免低端设备卡顿
             animation: false,
             color: ['#93B7DF', '#A2C4E1', '#B2D1E5', '#C1DEEA', '#D1EBEE', '#F3E1A0', '#F5D9A6', '#F7D1AC', '#F9C9B2', '#FBC1B8', '#FDB9BE', '#FFB1C4'],
             tooltip: {
@@ -1094,9 +1116,7 @@
             series: {
                 type: 'sunburst',
                 data: chartData,
-                // 彻底关闭点击缩放，恢复第一版体验
                 nodeClick: false, 
-                // 调整半径，适应屏幕宽度
                 radius: ['20%', '90%'], 
                 center: ['50%', '50%'],
                 sort: function (a, b) { return b.getValue() - a.getValue(); },
@@ -1130,7 +1150,6 @@
             }
         };
 
-        // 使用 RAF 防止阻塞 UI 线程
         requestAnimationFrame(() => {
             instance.setOption(option, true);
             instance.resize();
