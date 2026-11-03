@@ -455,13 +455,55 @@
             renderPaydayWeek(); 
             updateRealCountdown(); 
             updateHomeOverview(); 
-            fillAmountFromURL(); 
             
+            // 启动剪贴板自动填入
+            tryAutoFillFromClipboard();
+
             window.addEventListener('resize', () => {
                 if (monthlyChart) monthlyChart.resize();
                 if (yearlyChart) yearlyChart.resize();
             });
         } catch(e) { console.error("Init Error:", e); }
+    }
+
+    // === 新增：从剪贴板自动填入金额 ===
+    async function tryAutoFillFromClipboard() {
+        try {
+            // iOS 某些版本不允许页面加载时直接读取剪贴板，会抛出 NotAllowedError
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                const text = await navigator.clipboard.readText();
+                processClipboardText(text);
+            }
+        } catch (err) {
+            console.log('直接读取剪贴板失败，绑定第一次点击事件:', err);
+            // 如果直接读取失败（被系统拦截），则等待用户第一次触摸页面时读取
+            const triggerAutoFill = async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    processClipboardText(text);
+                } catch (e) {}
+                document.removeEventListener('touchstart', triggerAutoFill);
+                document.removeEventListener('click', triggerAutoFill);
+            };
+            document.addEventListener('touchstart', triggerAutoFill, { once: true });
+            document.addEventListener('click', triggerAutoFill, { once: true });
+        }
+    }
+
+    function processClipboardText(text) {
+        if (!text) return;
+        const match = text.match(/\d+(\.\d{1,2})?/);
+        if (match) {
+            const amountInput = document.getElementById('input-amount');
+            // 只有当输入框为空时才填入，防止覆盖用户手输
+            if (amountInput && !amountInput.value) {
+                amountInput.value = match[0];
+                amountInput.style.backgroundColor = '#E8F1FA';
+                setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1500);
+                // 填入后清空剪贴板，防止下次误触发
+                try { navigator.clipboard.writeText(''); } catch(e) {}
+            }
+        }
     }
 
     function showToast(msg) {
@@ -474,21 +516,7 @@
     }
 
     function fillAmountFromURL() {
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const rawAmount = params.get('amount');
-            if (rawAmount) {
-                const match = rawAmount.match(/\d+(\.\d{1,2})?/);
-                if (match) {
-                    const amountInput = document.getElementById('input-amount');
-                    if (amountInput) {
-                        amountInput.value = match[0];
-                        amountInput.style.backgroundColor = '#E8F1FA';
-                        setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1000);
-                    }
-                }
-            }
-        } catch(e){}
+        // 保留此空函数，防止老版本快捷指令传参时找不到函数报错
     }
 
     function goToShortcut(name) {
@@ -500,6 +528,7 @@
         if (isHttp) {
             const currentUrl = window.location.href.split('#')[0].split('?')[0];
             const hostAndPath = currentUrl.replace(/^https?:\/\//, '');
+            // 使用 webapp:// 尝试唤起主屏幕 App
             const callbackUrl = 'webapp://' + hostAndPath;
             url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(name) 
                 + "&x-success=" + encodeURIComponent(callbackUrl);
@@ -1316,7 +1345,7 @@
         document.getElementById('export-textarea').value = csv; alert('生成成功！请在下方文本框中长按复制。');
     }
 
-    // --- 预算导出 ---
+    // --- 预算导出导入 ---
     function getStoredBudgetValue(year, month, cat, isRatio) {
         if (isRatio) {
             const yr = budgets[year];
@@ -1385,7 +1414,6 @@
         alert('生成成功！请在下方文本框中长按复制。');
     }
 
-    // === 新增：预算导入 ===
     function parseCSVLine(line) {
         const result = [];
         let cur = '', inQuotes = false;
