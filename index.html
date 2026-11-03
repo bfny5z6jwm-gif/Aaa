@@ -748,7 +748,6 @@
         if (pageId === 'dashboard') { 
             updateDashLabels(); 
             renderDashboard(); 
-            // 延迟执行 resize 确保容器已有宽高
             setTimeout(() => {
                 if (monthlyChart) monthlyChart.resize();
                 if (yearlyChart) yearlyChart.resize();
@@ -929,7 +928,7 @@
         let selectedDate = new Date();
         if(dateInput.value) { const parts = dateInput.value.split('-'); selectedDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0); }
 
-        records.unshift({
+        const newRecord = {
             id: Date.now().toString(), 
             type: state.type, 
             category1: state.cat1, 
@@ -938,19 +937,24 @@
             remark: remarkInput.value.trim(), 
             nature: state.nature, 
             date: selectedDate.toISOString()
-        });
+        };
+        
+        records.unshift(newRecord);
         localStorage.setItem('app_records', JSON.stringify(records));
         
         updateHomeOverview();
 
         const dateStr = selectedDate.toISOString().substring(0, 10);
         const typeStr = state.type === 'expense' ? '支出' : '收入';
-        const remarkStr = remarkInput.value.trim() || '无';
-        const clipData = `${dateStr},${typeStr},${state.cat1},${amount.toFixed(2)},${remarkStr}`;
+        const remarkStr = newRecord.remark || '无';
 
-        // 核心修改：优先写入剪贴板
+        // 核心修改：打包完整的 8 项数据发送给快捷指令
+        // 顺序：ID,日期,类型,一级分类,二级分类,收支性质,金额,备注
+        const clipData = `${newRecord.id},${dateStr},${typeStr},${newRecord.category1},${newRecord.category2},${newRecord.nature},${newRecord.amount.toFixed(2)},${remarkStr}`;
+
+        // 优先写入剪贴板
         navigator.clipboard.writeText(clipData).catch(err => {
-            console.log('复制失败，可能需要手动触发', err);
+            console.log('复制失败', err);
         });
 
         // 清空输入框
@@ -958,12 +962,12 @@
         remarkInput.value = ''; 
         document.getElementById('input-date').valueAsDate = new Date();
 
-        // 核心修改：直接触发跳转，去掉 confirm 弹窗，防止 Safari 拦截
+        // 直接触发跳转，去掉 confirm 弹窗，防止 Safari 拦截
         setTimeout(() => {
             window.location.href = "shortcuts://run-shortcut?name=追加记账到Numbers";
         }, 100);
         
-        // 延迟弹出成功提示，防止与跳转冲突
+        // 延迟弹出成功提示
         setTimeout(() => {
             alert('✅ 记账成功！正在尝试同步到 Numbers。');
         }, 500);
@@ -1040,7 +1044,6 @@
         document.getElementById('dash-monthly').style.display = mode === 'monthly' ? 'block' : 'none';
         document.getElementById('dash-yearly').style.display = mode === 'yearly' ? 'block' : 'none';
         
-        // 采用 RAF 优化切换渲染卡顿
         requestAnimationFrame(() => {
             if (mode === 'monthly') {
                 renderMonthlyDashboard();
@@ -1057,7 +1060,6 @@
         else renderYearlyDashboard(); 
     }
 
-    // 图表渲染优化
     function renderSunburstChart(domId, year, month = null) {
         const chartDom = document.getElementById(domId);
         if (!chartDom) return;
