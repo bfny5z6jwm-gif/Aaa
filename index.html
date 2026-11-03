@@ -172,6 +172,20 @@
         .bio-btn { margin: 8px 0 4px; padding: 11px; background: var(--primary-light); border-radius: 10px; color: var(--primary); font-weight: 700; cursor: pointer; text-align: center; font-size: 14px; border: 1px dashed var(--primary); user-select: none; }
         .bio-btn:active { background: #d8e8f7; }
         .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.78); color: white; padding: 12px 22px; border-radius: 10px; font-size: 14px; z-index: 99999; pointer-events: none; opacity: 1; transition: opacity 0.3s; white-space: nowrap; }
+        
+        /* 剪贴板悬浮按钮 */
+        .paste-helper-btn {
+            position: fixed; top: 25%; left: 50%; transform: translateX(-50%);
+            background: #333; color: #fff; padding: 12px 24px; border-radius: 30px;
+            font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 10000; cursor: pointer; display: flex; align-items: center; gap: 8px;
+            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .paste-helper-btn:active { transform: translateX(-50%) scale(0.95); }
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: translate(-50%, 20px) scale(0.9); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -389,12 +403,6 @@
     </div>
 
 <script>
-    // ==========================================
-    // 🚨 云端存储桶 ID (已根据你的截图填入) 🚨
-    // ==========================================
-    const BUCKET_ID = "EUDJRc2Hx5vG6JNUaDQciC"; 
-    const API_URL = `https://kvdb.io/${BUCKET_ID}/amount`;
-
     if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().then(granted => {}); }
     function safeParse(jsonStr, defaultVal) { 
         try { 
@@ -462,8 +470,8 @@
             updateRealCountdown(); 
             updateHomeOverview(); 
             
-            // 启动云端获取金额逻辑
-            fetchAmountFromCloud();
+            // 尝试自动读取剪贴板金额，并显示提示按钮
+            setTimeout(tryAutoFillFromClipboard, 500);
 
             window.addEventListener('resize', () => {
                 if (monthlyChart) monthlyChart.resize();
@@ -472,37 +480,82 @@
         } catch(e) { console.error("Init Error:", e); }
     }
 
-    // === 核心逻辑：从云端获取金额并清空 ===
-    async function fetchAmountFromCloud() {
-        if (BUCKET_ID === "YOUR_BUCKET_ID") return; 
-        
+    // === 核心逻辑：尽最大可能填入金额 ===
+    async function tryAutoFillFromClipboard() {
+        const amountInput = document.getElementById('input-amount');
+        if (!amountInput) return;
+
+        let success = false;
         try {
-            // 加时间戳防止缓存
-            const res = await fetch(API_URL + '?t=' + Date.now());
-            if (!res.ok) return;
-            
-            const text = await res.text();
-            if (text && text.trim() !== '') {
-                const match = text.match(/\d+(\.\d{1,2})?/);
-                if (match && match[0]) {
-                    const amountInput = document.getElementById('input-amount');
-                    if (amountInput && !amountInput.value) {
-                        // 自动填入金额
-                        amountInput.value = match[0];
-                        amountInput.style.backgroundColor = '#E8F1FA';
-                        setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1500);
-                        showToast(`✨ 已提取金额: ${match[0]}`);
+            // 尝试静默读取剪贴板
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    const match = text.match(/\d+(\.\d{1,2})?/);
+                    if (match && match[0]) {
+                        fillAmount(match[0]);
+                        success = true;
                     }
                 }
-                
-                // 取出后立刻清空云端数据，防止下次打开重复填入
-                try {
-                    await fetch(API_URL, { method: 'DELETE' });
-                } catch(e) { console.log('清空云端失败', e); }
             }
         } catch (err) {
-            console.log('读取云端数据失败:', err);
+            console.log('静默读取被系统拦截，等待用户手势');
         }
+
+        if (!success) {
+            // 如果静默失败，弹出一个大按钮供用户一键点击
+            showPasteHelper();
+            // 顺便把输入框聚焦，把键盘弹出来，方便用户直接点键盘上的剪贴板
+            amountInput.focus();
+        }
+    }
+
+    function fillAmount(val) {
+        const amountInput = document.getElementById('input-amount');
+        if (amountInput && !amountInput.value) {
+            amountInput.value = val;
+            amountInput.style.backgroundColor = '#E8F1FA';
+            setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1500);
+        }
+    }
+
+    function showPasteHelper() {
+        // 避免重复添加
+        if (document.getElementById('paste-helper-btn')) return;
+
+        const btn = document.createElement('div');
+        btn.id = 'paste-helper-btn';
+        btn.className = 'paste-helper-btn';
+        btn.innerHTML = '👇 点击自动填入金额';
+        
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    const match = text.match(/\d+(\.\d{1,2})?/);
+                    if (match && match[0]) {
+                        fillAmount(match[0]);
+                        btn.remove(); // 填入成功后消失
+                    } else {
+                        showToast('剪贴板中没有金额数字');
+                    }
+                }
+            } catch (err) {
+                showToast('读取失败，请长按金额框手动粘贴');
+            }
+        };
+        
+        document.body.appendChild(btn);
+
+        // 点击页面其他地方时，这个按钮会自动消失
+        setTimeout(() => {
+            document.body.addEventListener('touchstart', function removeBtn() {
+                const b = document.getElementById('paste-helper-btn');
+                if (b) b.remove();
+                document.body.removeEventListener('touchstart', removeBtn);
+            }, { once: true });
+        }, 1000);
     }
 
     function showToast(msg) {
