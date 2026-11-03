@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>极简记账本</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- 已删除 echarts，加快网页打开速度 -->
     <style>
         :root {
             --primary: #93B7DF; --primary-light: #E8F1FA; --secondary: #F3E1A0; 
@@ -30,11 +30,6 @@
         .stat-val.expense { color: var(--text-main); }
         .stat-val.income { color: var(--green); }
         .stat-val.balance { color: var(--red); }
-        .dashboard-grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .dashboard-grid-6 .stat-item { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
-        .dashboard-grid-6 .stat-item:nth-child(n+4) { border-bottom: none; padding-bottom: 0; }
-        .dashboard-grid-6 .stat-label { font-size: 11px; margin-bottom: 2px; white-space: nowrap; }
-        .dashboard-grid-6 .stat-val { font-size: 16px; }
         .payday-card { background: #FDF9EC; border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(243, 225, 160, 0.2); border: 1px solid #F3E1A0; overflow: hidden; touch-action: pan-y; }
         .payday-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #8A6D3B; font-weight: bold; margin-bottom: 6px; }
         .payday-nav-btn { cursor: pointer; padding: 0 8px; font-size: 12px; user-select: none; }
@@ -84,60 +79,11 @@
         .bill-amount.expense { color: var(--text-main); }
         .bill-amount.income { color: var(--green); }
         .delete-btn { background: #FEF2F2; color: var(--red); border: none; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 500; flex-shrink: 0; cursor: pointer; }
-        .progress-item { margin-bottom: 12px; }
-        .progress-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; font-weight: 600; }
-        .progress-bg { height: 6px; background: #F0F2F5; border-radius: 3px; overflow: hidden; }
-        .progress-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
-        .progress-bar.safe { background: var(--primary); }
-        .progress-bar.danger { background: var(--red); }
-        .month-selector { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: var(--card-bg); padding: 0 15px; border-radius: 10px; font-weight: bold; font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); height: 44px; border: 1px solid var(--border); }
-        .month-btn { padding: 5px 10px; color: var(--primary); font-size: 18px; cursor: pointer; }
-        .sort-bar { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 12px; padding-bottom: 4px; }
-        .sort-btn { padding: 6px 12px; background: white; border-radius: 20px; font-size: 12px; color: var(--text-sub); border: 1px solid var(--border); white-space: nowrap; cursor: pointer; }
-        .sort-btn.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
-        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; color: var(--text-sub); margin-bottom: 8px; font-weight: bold;}
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .calendar-cell { min-height: 44px; border-radius: 6px; padding: 4px; background: #FAFAFA; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; font-size: 11px; border: 1px solid #F0F0F0; }
-        .calendar-cell.empty { background: transparent; border: none; }
-        .calendar-day { color: var(--text-sub); font-weight: 600; }
-        .calendar-amount { font-weight: bold; color: var(--primary); font-size: 11px; align-self: flex-end; margin-top: auto; }
-        .calendar-amount.has-spend { color: var(--red); }
-        .donut-container { display: flex; align-items: center; justify-content: space-around; padding: 10px 0; }
-        .donut-chart { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
-        .donut-inner { width: 64px; height: 64px; background: white; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .donut-inner .title { font-size: 10px; color: var(--text-sub); }
-        .donut-inner .val { font-size: 13px; font-weight: bold; color: var(--text-main); }
-        .legend { font-size: 13px; line-height: 2; color: var(--text-main); }
-        .legend span.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .empty-tip { text-align: center; color: var(--text-sub); padding: 30px 0; font-size: 13px; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: calc(60px + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: flex-start; box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 100; padding-top: 8px; }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 20%; color: var(--text-sub); font-size: 10px; transition: 0.2s; cursor: pointer; }
         .nav-item.active { color: var(--primary); font-weight: bold; }
         .nav-icon { font-size: 20px; margin-bottom: 2px; }
-        .empty-tip { text-align: center; color: var(--text-sub); padding: 30px 0; font-size: 13px; }
-        .data-textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 12px; color: var(--text-sub); background: #FAFAFA; resize: none; outline: none; font-family: monospace; margin-top: 10px; }
-        .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; background: var(--card-bg); padding-bottom: 10px; border: 1px solid var(--border); }
-        table { width: 100%; border-collapse: collapse; min-width: 850px; text-align: center; }
-        th, td { padding: 12px 6px; border-bottom: 1px solid #F0F0F0; font-size: 13px; white-space: nowrap; }
-        th { background: #FAFAFA; color: var(--text-sub); font-weight: 600; position: sticky; top: 0; z-index: 10; }
-        .table-fixed-col { text-align: left; font-weight: 600; position: sticky; left: 0; background: var(--card-bg); z-index: 11; border-right: 1px solid #F0F0F0; padding-left: 12px; }
-        th.table-fixed-col { background: #FAFAFA; z-index: 12; }
-        .preview-table-wrap { max-height: 250px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-top: 10px; background: #FAFAFA; }
-        .preview-table { width: 100%; min-width: 500px; border-collapse: collapse; font-size: 12px; }
-        .preview-table th, .preview-table td { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-        .preview-table th { background: #F0F2F5; position: sticky; top: 0; }
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9999; display: none; justify-content: center; align-items: center; }
-        .modal-overlay.active { display: flex; }
-        .modal-content { background: white; width: 85%; max-width: 320px; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: var(--primary); }
-        .modal-input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #F0F0F0; border-radius: 10px; font-size: 16px; text-align: center; outline: none; transition: 0.2s;}
-        .modal-input:focus { border-color: var(--primary); }
-        .modal-error { color: var(--red); font-size: 13px; margin-bottom: 10px; display: none; text-align: left; }
-        .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
-        .forgot-pwd { display: block; text-align: right; font-size: 13px; color: var(--primary); margin-top: -5px; margin-bottom: 10px; cursor: pointer; }
-        .cell-input { width: 60px; padding: 4px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-size: 13px; outline: none; color: var(--text-main); background: white; }
-        .cell-ratio { font-size: 10px; color: var(--text-sub); transform: scale(0.9); }
-        .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-        .chart-box { width: 100%; height: 340px; }
     </style>
 </head>
 <body>
@@ -157,15 +103,7 @@
                 <div class="stat-item"><div class="stat-label">剩余预算</div><div class="stat-val balance" id="home-total-bal">0.00</div></div>
             </div>
         </div>
-        <div class="payday-card" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
-            <div class="payday-header">
-                <span class="payday-nav-btn" onclick="changePaydayWeek(-1)">◀</span>
-                <span id="payday-month-label" style="font-size:12px;">2026年11月</span>
-                <span class="payday-nav-btn" onclick="changePaydayWeek(1)">▶</span>
-            </div>
-            <div class="payday-week" id="payday-week-container"></div>
-            <div class="payday-bottom"><span id="payday-bottom-text">距离发薪日还有 <span class="payday-countdown-val" id="payday-count">--</span> 天</span></div>
-        </div>
+        
         <div class="card">
             <div class="type-switch">
                 <div class="type-btn active" onclick="switchType('expense')">支出</div>
@@ -185,320 +123,172 @@
 
     <div id="page-bills" class="page">
         <div class="month-selector">
-            <div class="month-btn" onclick="changeBillMonth(-1)">◀</div><div id="bill-month-label">2026年10月</div><div class="month-btn" onclick="changeBillMonth(1)">▶</div>
-        </div>
-        <div class="sort-bar">
-            <div class="sort-btn active" onclick="changeSort('date-desc')">时间↓</div>
-            <div class="sort-btn" onclick="changeSort('date-asc')">时间↑</div>
-            <div class="sort-btn" onclick="changeSort('amount-desc')">金额↓</div>
-            <div class="sort-btn" onclick="changeSort('amount-asc')">金额↑</div>
-            <div class="sort-btn" onclick="changeSort('cat1')">按分类</div>
+            <div class="month-btn" onclick="changeBillMonth(-1)">◀</div><div id="bill-month-label">2026年11月</div><div class="month-btn" onclick="changeBillMonth(1)">▶</div>
         </div>
         <div class="card" style="padding: 0 14px;"><ul id="bill-list" style="list-style: none;"></ul></div>
-    </div>
-
-    <div id="page-dashboard" class="page">
-        <div class="type-switch">
-            <div class="type-btn active" onclick="switchDashboard('monthly')">月度看板</div>
-            <div class="type-btn" onclick="switchDashboard('yearly')">年度看板</div>
-        </div>
-        <div id="dash-monthly">
-            <div class="month-selector"><div class="month-btn" onclick="changeDashMonth(-1)">◀</div><div id="dash-month-label">2026年10月</div><div class="month-btn" onclick="changeDashMonth(1)">▶</div></div>
-            <div class="overview-card" id="monthly-overview"></div>
-            <div class="card"><h3 style="font-size:14px; margin-bottom:10px; font-weight:600; color: var(--primary);">支出分类结构</h3><div id="monthly-sunburst-chart" class="chart-box"></div></div>
-            <div class="card"><h3 style="font-size:14px; margin-bottom:10px; font-weight:600; color: var(--primary);">本月支出日历</h3><div class="calendar-header"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div><div class="calendar-grid" id="monthly-calendar"></div></div>
-            <div class="card"><h3 style="font-size:14px; margin-bottom:10px; font-weight:600; color: var(--primary);">开销性质分布</h3><div class="donut-container"><div id="nature-donut" class="donut-chart"><div class="donut-inner"><div class="title">本月支出</div><div class="val" id="donut-total-exp">0</div></div></div><div class="legend"><div><span class="dot" style="background:var(--primary);"></span>必须开销: <span id="must-percent-text">0%</span></div><div><span class="dot" style="background:var(--secondary);"></span>非必要开销: <span id="non-must-percent-text">0%</span></div></div></div></div>
-            <div class="card"><h3 style="font-size:14px; margin-bottom:10px; font-weight:600; color: var(--primary);">本月分类预算执行</h3><div id="monthly-budget-progress"></div></div>
-        </div>
-        <div id="dash-yearly" style="display: none;">
-            <div class="month-selector"><div class="month-btn" onclick="changeDashYear(-1)">◀</div><div id="dash-year-label">2026年</div><div class="month-btn" onclick="changeDashYear(1)">▶</div></div>
-            <div class="overview-card" id="yearly-overview"></div>
-            <div class="card"><h3 style="font-size:14px; margin-bottom:10px; font-weight:600; color: var(--primary);">全年支出分类结构</h3><div id="yearly-sunburst-chart" class="chart-box"></div></div>
-            <div class="card"><h3 style="font-size:14px; margin-bottom:10px; font-weight:600; color: var(--primary);">分类月度预算执行</h3><div class="table-wrapper"><table style="min-width: 680px;"><thead><tr><th class="table-fixed-col">分类 / 月份</th><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th></tr></thead><tbody id="yearly-matrix-tbody"></tbody></table></div></div>
-        </div>
-    </div>
-
-    <div id="page-budget" class="page">
-        <div class="month-selector"><div class="month-btn" onclick="changeBudgetYear(-1)">◀</div><div id="budget-year-label">2026年</div><div class="month-btn" onclick="changeBudgetYear(1)">▶</div></div>
-        <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px; padding-left:5px;">* 每月可独立设定存款比例，总收入自动读取首页记账，餐饮自动计算</p>
-        <div class="table-wrapper"><table id="budget-table"><thead><tr><th class="table-fixed-col" style="min-width: 90px;">项目</th><th style="min-width: 80px;">年度汇总</th><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th></tr></thead><tbody id="budget-tbody"></tbody></table></div>
-    </div>
-
-    <div id="page-data" class="page">
-        <h2 style="font-size: 18px; margin-bottom: 15px; padding-left: 5px; color: var(--primary); font-weight:800;">数据备份与恢复</h2>
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="font-size:15px; font-weight:600;">🗑️ 已删除记录</h3>
-                <button class="delete-btn" onclick="clearDeletedRecords()" style="padding: 4px 10px;">清空记录</button>
-            </div>
-            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">您在网页上删除的账单会暂存在这里，方便日后核对。</p>
-            <div class="preview-table-wrap" style="max-height: 200px;">
-                <table class="preview-table" id="deleted-table"><thead><tr><th>删除时间</th><th>日期</th><th>分类</th><th>金额</th><th>备注</th></tr></thead><tbody id="deleted-tbody"></tbody></table>
-            </div>
-        </div>
-        <div class="card">
-            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">导出数据</h3>
-            <div class="input-row" style="border-bottom: 1px solid #F0F0F0; padding: 10px 0;"><div class="input-label" style="width: 70px;">开始日期</div><input type="date" id="export-start-date" class="input-field" onchange="previewData()"></div>
-            <div class="input-row" style="border-bottom: 1px solid #F0F0F0; padding: 10px 0;"><div class="input-label" style="width: 70px;">结束日期</div><input type="date" id="export-end-date" class="input-field" onchange="previewData()"></div>
-            <div id="preview-container" style="margin-top: 15px; display: none;">
-                <div style="font-size: 12px; color: var(--text-sub); margin-bottom: 5px;">数据预览 (前20条):</div>
-                <div class="preview-table-wrap"><table class="preview-table" id="preview-table"><thead><tr><th>ID</th><th>日期</th><th>类型</th><th>一级分类</th><th>二级分类</th><th>金额</th><th>备注</th></tr></thead><tbody></tbody></table></div>
-            </div>
-            <div id="empty-preview-tip" style="font-size: 13px; color: var(--red); margin-top: 15px; display: none;">所选时间段内无数据。</div>
-            <button class="btn btn-primary" style="margin-top: 15px;" onclick="downloadCSV()">📥 下载表格文件</button>
-            <button class="btn btn-primary" style="margin-top: 10px;" onclick="generateCSVText()">📋 生成复制文本</button>
-            <textarea id="export-textarea" class="data-textarea" readonly placeholder="生成的文本会显示在这里，您可以直接长按复制..."></textarea>
-        </div>
-        <div class="card">
-            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">导入数据恢复</h3>
-            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">选择之前导出的 `.csv` 文件，数据将自动追加到现有账单中。</p>
-            <input type="file" id="import-file" accept=".csv, text/csv" style="display: none;" onchange="importData(event)">
-            <button class="btn btn-primary" onclick="document.getElementById('import-file').click()">📁 选择文件导入</button>
-        </div>
-        <div class="card">
-            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">安全设置</h3>
-            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">账单、统计、预算和我的页面需要密码才能查看。初始默认密码为 <b>1234</b>。</p>
-            <button class="btn btn-primary" onclick="openChangePasswordModal()">🔑 修改查看密码</button>
-            <button class="btn btn-primary" style="margin-top: 10px;" onclick="openSecurityModal()">🛡️ 设置/修改密保问题</button>
-        </div>
-        <div class="card">
-            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600; color: var(--red);">危险操作</h3>
-            <button class="btn btn-danger" onclick="clearAllData()">清空所有本地记账数据</button>
-        </div>
     </div>
 
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchPage('add')"><div class="nav-icon">🏠</div><div>首页</div></div>
         <div class="nav-item" onclick="switchPage('bills')"><div class="nav-icon">📋</div><div>账单</div></div>
-        <div class="nav-item" onclick="switchPage('dashboard')"><div class="nav-icon">📊</div><div>统计</div></div>
-        <div class="nav-item" onclick="switchPage('budget')"><div class="nav-icon">📅</div><div>预算</div></div>
-        <div class="nav-item" onclick="switchPage('data')"><div class="nav-icon">👤</div><div>我的</div></div>
-    </div>
-
-    <div id="passwordModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-title" id="modalTitle">🔒 请输入密码</div>
-            <input type="password" id="modalPasswordInput" class="modal-input" inputmode="numeric" maxlength="8" placeholder="••••" style="font-size: 24px; letter-spacing: 8px;">
-            <div class="forgot-pwd" onclick="handleForgotPassword()">忘记密码？</div>
-            <div id="modalErrorMsg" class="modal-error" style="text-align:center;">密码错误，请重试</div>
-            <div class="modal-actions">
-                <button class="btn" style="background:#F0F2F5; color:#333; margin-top:0;" onclick="closePasswordModal()">取消</button>
-                <button class="btn btn-primary" style="margin-top:0;" onclick="verifyPasswordAndProceed()">确认</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="settingsModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-title" id="settingsTitle">修改密码</div>
-            <div style="text-align:left; font-size:12px; color:var(--text-sub); margin-bottom:10px;" id="settingsTip"></div>
-            <div id="settingsForm"></div><div id="settingsError" class="modal-error"></div>
-            <div class="modal-actions">
-                <button class="btn" style="background:#F0F2F5; color:#333; margin-top:0;" onclick="closeSettingsModal()">取消</button>
-                <button class="btn btn-primary" style="margin-top:0;" id="settingsConfirmBtn">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="forgotModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-title">找回密码</div>
-            <div id="forgotStep1">
-                <div style="text-align:left; font-size:14px; color:var(--text-main); margin-bottom:8px;" id="forgotQuestionText"></div>
-                <input type="text" id="forgotAnswerInput" class="modal-input" placeholder="请输入密保答案">
-                <div id="forgotError" class="modal-error"></div>
-                <div class="modal-actions">
-                    <button class="btn" style="background:#F0F2F5; color:#333; margin-top:0;" onclick="closeForgotModal()">取消</button>
-                    <button class="btn btn-primary" style="margin-top:0;" onclick="verifySecurityAnswer()">验证答案</button>
-                </div>
-            </div>
-            <div id="forgotStep2" style="display:none;">
-                <input type="password" id="forgotNewPwd" class="modal-input" placeholder="请输入新密码" inputmode="numeric">
-                <input type="password" id="forgotConfirmPwd" class="modal-input" placeholder="请再次输入新密码" inputmode="numeric">
-                <div id="forgotError2" class="modal-error"></div>
-                <div class="modal-actions">
-                    <button class="btn" style="background:#F0F2F5; color:#333; margin-top:0;" onclick="closeForgotModal()">取消</button>
-                    <button class="btn btn-primary" style="margin-top:0;" onclick="saveForgotNewPassword()">重置并解锁</button>
-                </div>
-            </div>
-        </div>
     </div>
 
 <script>
-    if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().then(granted => {}); }
-    function safeParse(jsonStr, defaultVal) { try { const parsed = JSON.parse(jsonStr); return parsed ? parsed : defaultVal; } catch(e) { return defaultVal; } }
-
     const CATEGORIES = {
         expense: [
             { id: '餐饮', name: '餐饮', icon: '🍜', subs: [{name: '正常三餐', icon: '🍱'}, {name: '聚餐', icon: '🍻'}, {name: '奶茶/水果', icon: '🍰'}, {name: '其他', icon: '🥢'}] },
             { id: '购物', name: '购物', icon: '🛍️', subs: [{name: '衣服/鞋子', icon: '👗'}, {name: '日用品', icon: '🧴'}, {name: '美妆', icon: '💄'}, {name: '其他', icon: '🛒'}] },
             { id: '日常', name: '日常', icon: '🧻', subs: [{name: '理发/美甲', icon: '💇'}, {name: '房租/水电', icon: '🏠'}, {name: '话费', icon: '📱'}, {name: '其他', icon: '🧻'}] },
-            { id: '学习', name: '学习', icon: '📚', subs: [{name: '书籍/课程', icon: '📖'}, {name: '软件', icon: '💻'}, {name: '其他', icon: '📚'}] },
-            { id: '交通', name: '交通', icon: '🚗', subs: [{name: '地铁', icon: '🚇'}, {name: '高铁', icon: '🚄'}, {name: '其他', icon: '🚗'}] },
-            { id: '健康', name: '健康', icon: '💊', subs: [{name: '运动', icon: '🏃'}, {name: '医院', icon: '🏥'}, {name: '其他', icon: '💊'}] },
-            { id: '旅行', name: '旅行', icon: '🧳', subs: [{name: '餐饮', icon: '🍽️'}, {name: '住宿', icon: '🏨'}, {name: '交通', icon: '✈️'}, {name: '其他', icon: '🧳'}] },
-            { id: '人情', name: '人情', icon: '🎁', subs: [{name: '礼物/礼金', icon: '🎁'}, {name: '长辈', icon: '👴'}, {name: '请客', icon: '🥂'}, {name: '其他', icon: '🧧'}] },
             { id: '其他', name: '其他', icon: '❓', subs: [{name: '其他', icon: '❓'}] }
         ],
         income: [
             { id: '工资', name: '工资', icon: '💰', subs: [{name: '工资收入', icon: '💰'}] },
-            { id: '理财', name: '理财', icon: '📈', subs: [{name: '股票', icon: '📈'}, {name: '基金', icon: '📊'}, {name: '其他', icon: '📉'}] },
-            { id: '其他收入', name: '其他', icon: '🪙', subs: [{name: '其他收入', icon: '🪙'}] }
+            { id: '理财', name: '理财', icon: '📈', subs: [{name: '股票', icon: '📈'}, {name: '基金', icon: '📊'}, {name: '其他', icon: '📉'}] }
         ]
     };
 
     let state = {
         type: 'expense', cat1: '餐饮', cat2: '正常三餐', nature: '必须开销',
-        homeDate: new Date(), paydayWeekStart: null, billsDate: new Date(), 
-        budgetYear: new Date().getFullYear(), dashMode: 'monthly', billSort: 'date-desc', 
-        dashDate: new Date(), dashYear: new Date().getFullYear(), isUnlocked: false, pendingPage: null  
+        homeDate: new Date(), billsDate: new Date(), billSort: 'date-desc'
     };
-    let records = safeParse(localStorage.getItem('app_records'), []);
-    let budgets = safeParse(localStorage.getItem('app_budgets'), {});
-    let deletedRecords = safeParse(localStorage.getItem('app_deleted_records'), []); 
-    let appPassword = localStorage.getItem('app_password') || '1234'; 
-    let secQuestion = localStorage.getItem('app_sec_question') || '';
-    let secAnswer = localStorage.getItem('app_sec_answer') || '';
-    let touchStartX = 0;
-    let monthlyChart = null, yearlyChart = null;
+    
+    let records = JSON.parse(localStorage.getItem('app_records') || '[]');
+    let deletedRecords = JSON.parse(localStorage.getItem('app_deleted_records') || '[]');
+    let isSyncing = false; 
 
     function init() {
-        try {
-            document.getElementById('input-date').valueAsDate = new Date();
-            renderCategories(); renderBudgetTable(); updateDashLabels();
-            resetPaydayWeek(); renderPaydayWeek(); updateRealCountdown(); updateHomeOverview(); 
-            checkClipboardForAmount();
-            window.addEventListener('resize', () => {
-                if (monthlyChart) monthlyChart.resize();
-                if (yearlyChart) yearlyChart.resize();
-            });
-        } catch(e) {}
+        document.getElementById('input-date').valueAsDate = new Date();
+        renderCategories(); 
+        updateHomeOverview(); 
+        fillAmountFromURL(); 
     }
 
-    async function checkClipboardForAmount() {
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && /^\d+(\.\d{1,2})?$/.test(text.trim())) {
+    // 容错率极高的读取 URL 金额函数
+    function fillAmountFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const rawAmount = params.get('amount');
+        
+        if (rawAmount) {
+            // 无论快捷指令传过来的是 "-26.90" 还是 "26.90"，或者带有空格
+            // 这里用正则提取出第一个合法的纯数字（带小数）
+            const match = rawAmount.match(/\d+(\.\d{1,2})?/);
+            if (match) {
                 const amountInput = document.getElementById('input-amount');
                 if (amountInput) {
-                    amountInput.value = text.trim();
-                    await navigator.clipboard.writeText('');
+                    amountInput.value = match[0];
+                    // 让输入框闪烁一下提醒用户填入成功
+                    amountInput.style.backgroundColor = '#E8F1FA';
+                    setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1000);
                 }
             }
-        } catch (err) { console.log('读取剪贴板失败', err); }
-    }
-
-    function changeHomeMonth(offset) { state.homeDate.setMonth(state.homeDate.getMonth() + offset); updateHomeOverview(); resetPaydayWeek(); renderPaydayWeek(); }
-    function getAdjustedPayday(year, month) { let d = new Date(year, month, 8); let dayOfWeek = d.getDay(); if (dayOfWeek === 6) { d.setDate(7); } else if (dayOfWeek === 0) { d.setDate(6); } d.setHours(0, 0, 0, 0); return d; }
-    function resetPaydayWeek() { const y = state.homeDate.getFullYear(); const m = state.homeDate.getMonth(); const payday = getAdjustedPayday(y, m); const start = new Date(payday); start.setDate(payday.getDate() - payday.getDay()); state.paydayWeekStart = start; }
-    function changePaydayWeek(offset) { if (!state.paydayWeekStart) return; state.paydayWeekStart.setDate(state.paydayWeekStart.getDate() + (offset * 7)); renderPaydayWeek(); }
-    function renderPaydayWeek() {
-        if (!state.paydayWeekStart) return;
-        const startDate = new Date(state.paydayWeekStart), endDate = new Date(state.paydayWeekStart);
-        endDate.setDate(endDate.getDate() + 6);
-        const monthLabel = document.getElementById('payday-month-label');
-        if (startDate.getMonth() !== endDate.getMonth()) monthLabel.innerText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月-${endDate.getMonth() + 1}月`;
-        else monthLabel.innerText = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月`;
-        const now = new Date(); now.setHours(0, 0, 0, 0);
-        const weekDaysShort = ['日', '一', '二', '三', '四', '五', '六'];
-        const container = document.getElementById('payday-week-container'); container.innerHTML = '';
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(state.paydayWeekStart); d.setDate(state.paydayWeekStart.getDate() + i); d.setHours(0, 0, 0, 0);
-            const isPayday = d.getTime() === getAdjustedPayday(d.getFullYear(), d.getMonth()).getTime();
-            const isToday = d.getTime() === now.getTime();
-            let boxClass = 'payday-day-box'; if (isPayday) boxClass += ' is-payday'; if (isToday) boxClass += ' is-today';
-            container.innerHTML += `<div class="${boxClass}"><div class="date-num">${d.getDate()}</div><div class="date-week">${weekDaysShort[i]}</div></div>`;
         }
     }
-    function updateRealCountdown() {
-        const now = new Date(); now.setHours(0, 0, 0, 0);
-        let targetMonth = now.getMonth(), targetYear = now.getFullYear();
-        let paydayThisMonth = getAdjustedPayday(targetYear, targetMonth);
-        if (now > paydayThisMonth) { targetMonth++; if (targetMonth > 11) { targetMonth = 0; targetYear++; } paydayThisMonth = getAdjustedPayday(targetYear, targetMonth); }
-        const diffDays = Math.ceil((paydayThisMonth - now) / (1000 * 60 * 60 * 24));
-        const bottomTextEl = document.getElementById('payday-bottom-text');
-        if (diffDays === 0) bottomTextEl.innerHTML = `🎉 今天发工资啦！`; else bottomTextEl.innerHTML = `距离发薪日还有 <span class="payday-countdown-val">${diffDays}</span> 天`;
+
+    function goToShortcut(name) {
+        if (isSyncing) return;
+        isSyncing = true;
+        window.location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(name);
+        setTimeout(() => { isSyncing = false; }, 3000); 
     }
-    function handleTouchStart(event) { touchStartX = event.touches[0].clientX; }
-    function handleTouchEnd(event) { let touchEndX = event.changedTouches[0].clientX; if (touchStartX - touchEndX > 50) changePaydayWeek(1); else if (touchEndX - touchStartX > 50) changePaydayWeek(-1); }
-    function getMonthlyActualIncome(year, month) { let sum = 0; records.forEach(r => { const d = new Date(r.date); if (d.getFullYear() === year && d.getMonth() === month && r.type === 'income') sum += r.amount; }); return sum; }
-    
+
     function updateHomeOverview() {
         const y = state.homeDate.getFullYear(), m = state.homeDate.getMonth();
         document.getElementById('home-month-label').innerText = `${y}年${m + 1}月`;
-        const yearData = getYearBudget(y), actualInc = getMonthlyActualIncome(y, m), rate = yearData.depositRates[m] || 0;
-        const monthBudget = actualInc * (1 - rate / 100);
-        let totalExp = 0; records.forEach(r => { const d = new Date(r.date); if (d.getFullYear() === y && d.getMonth() === m && r.type === 'expense') totalExp += r.amount; });
-        const remainingBudget = monthBudget - totalExp;
-        document.getElementById('home-total-exp').innerText = totalExp.toFixed(2); document.getElementById('home-total-inc').innerText = monthBudget.toFixed(2);
-        const balEl = document.getElementById('home-total-bal'); balEl.innerText = remainingBudget.toFixed(2); balEl.style.color = remainingBudget < 0 ? 'var(--red)' : 'var(--green)';
+        let totalExp = 0; 
+        records.forEach(r => { const d = new Date(r.date); if (d.getFullYear() === y && d.getMonth() === m && r.type === 'expense') totalExp += r.amount; });
+        document.getElementById('home-total-exp').innerText = totalExp.toFixed(2);
     }
 
     function switchPage(pageId) {
-        if ((pageId === 'bills' || pageId === 'dashboard' || pageId === 'budget' || pageId === 'data') && !state.isUnlocked) {
-            state.pendingPage = pageId;
-            const pageNames = { bills: '账单', dashboard: '统计', budget: '预算', data: '我的' };
-            document.getElementById('modalTitle').innerText = `🔒 查看${pageNames[pageId]}需验证`;
-            document.getElementById('modalPasswordInput').value = ''; document.getElementById('modalErrorMsg').style.display = 'none';
-            document.getElementById('passwordModal').classList.add('active');
-            setTimeout(() => document.getElementById('modalPasswordInput').focus(), 100);
-            return;
-        }
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('page-' + pageId).classList.add('active');
-        document.querySelectorAll('.nav-item')[['add', 'bills', 'dashboard', 'budget', 'data'].indexOf(pageId)].classList.add('active');
+        document.querySelectorAll('.nav-item')[['add', 'bills'].indexOf(pageId)].classList.add('active');
 
-        if (pageId === 'add') { updateHomeOverview(); updateRealCountdown(); renderPaydayWeek(); checkClipboardForAmount(); }
+        if (pageId === 'add') { updateHomeOverview(); }
         if (pageId === 'bills') renderBills();
-        if (pageId === 'dashboard') { updateDashLabels(); renderDashboard(); setTimeout(() => { if (monthlyChart) monthlyChart.resize(); if (yearlyChart) yearlyChart.resize(); }, 50); }
-        if (pageId === 'budget') renderBudgetTable();
-        if (pageId === 'data') { initExportDates(); previewData(); renderDeletedRecords(); } 
     }
 
-    function verifyPasswordAndProceed() { const input = document.getElementById('modalPasswordInput').value; if (input === appPassword) { state.isUnlocked = true; document.getElementById('passwordModal').classList.remove('active'); if (state.pendingPage) { switchPage(state.pendingPage); state.pendingPage = null; } } else { document.getElementById('modalErrorMsg').style.display = 'block'; document.getElementById('modalPasswordInput').value = ''; document.getElementById('modalPasswordInput').focus(); } }
-    function closePasswordModal() { document.getElementById('passwordModal').classList.remove('active'); state.pendingPage = null; }
-    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') state.isUnlocked = false; });
-    
-    function openChangePasswordModal() { /* 省略，与之前一致 */ document.getElementById('settingsTitle').innerText = '修改查看密码'; document.getElementById('settingsForm').innerHTML = `<input type="password" id="setOldPwd" class="modal-input" placeholder="请输入原密码"><input type="password" id="setNewPwd" class="modal-input" placeholder="请输入新密码"><input type="password" id="setConfirmPwd" class="modal-input" placeholder="请再次输入新密码">`; document.getElementById('settingsError').style.display = 'none'; document.getElementById('settingsModal').classList.add('active'); document.getElementById('settingsConfirmBtn').onclick = function(){ const oldPwd=document.getElementById('setOldPwd').value; const newPwd=document.getElementById('setNewPwd').value; if(oldPwd!==appPassword) return alert('原密码错误'); appPassword=newPwd; localStorage.setItem('app_password', appPassword); closeSettingsModal(); alert('修改成功'); }; }
-    function openSecurityModal() { /* 省略 */ }
-    function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
-    function handleForgotPassword() { /* 省略 */ }
-    function verifySecurityAnswer() { /* 省略 */ }
-    function saveForgotNewPassword() { /* 省略 */ }
-    function closeForgotModal() { document.getElementById('forgotModal').classList.remove('active'); }
-
-    function updateDashLabels() { document.getElementById('dash-month-label').innerText = `${state.dashDate.getFullYear()}年${state.dashDate.getMonth() + 1}月`; document.getElementById('dash-year-label').innerText = `${state.dashYear}年`; }
-    function changeDashMonth(offset) { state.dashDate.setMonth(state.dashDate.getMonth() + offset); updateDashLabels(); renderMonthlyDashboard(); }
-    function changeDashYear(offset) { state.dashYear += offset; updateDashLabels(); renderYearlyDashboard(); }
-    function initExportDates() { /* 省略 */ }
-    function switchType(type) { state.type = type; document.querySelectorAll('.type-btn')[0].classList.toggle('active', type === 'expense'); document.querySelectorAll('.type-btn')[1].classList.toggle('active', type === 'income'); state.cat1 = CATEGORIES[type][0].id; state.cat2 = CATEGORIES[type][0].subs[0].name; state.nature = type === 'expense' ? '必须开销' : '常规收入'; renderCategories(); }
+    function switchType(type) { 
+        state.type = type; 
+        document.querySelectorAll('.type-btn')[0].classList.toggle('active', type === 'expense'); 
+        document.querySelectorAll('.type-btn')[1].classList.toggle('active', type === 'income'); 
+        state.cat1 = CATEGORIES[type][0].id; 
+        state.cat2 = CATEGORIES[type][0].subs[0].name; 
+        state.nature = type === 'expense' ? '必须开销' : '常规收入'; 
+        renderCategories(); 
+    }
 
     function renderCategories() {
         const grid1 = document.getElementById('cat-level-1'); grid1.innerHTML = '';
-        CATEGORIES[state.type].forEach(cat => { const el = document.createElement('div'); el.className = `cat-item ${state.cat1 === cat.id ? 'active' : ''}`; el.innerHTML = `<div class="icon">${cat.icon}</div><div>${cat.name}</div>`; el.onclick = () => { state.cat1 = cat.id; state.cat2 = cat.subs[0].name; renderCategories(); }; grid1.appendChild(el); });
-        const list2 = document.getElementById('cat-level-2'); const currentCat = CATEGORIES[state.type].find(c => c.id === state.cat1); list2.innerHTML = '';
-        currentCat.subs.forEach(sub => { const el = document.createElement('div'); el.className = `sub-cat-item ${state.cat2 === sub.name ? 'active' : ''}`; el.innerHTML = `<span class="icon">${sub.icon}</span><div>${sub.name}</div>`; el.onclick = () => { state.cat2 = sub.name; renderCategories(); }; list2.appendChild(el); });
-        const natureContainer = document.getElementById('nature-switch'); let natures = state.type === 'expense' ? ['必须开销', '非必要开销'] : ['常规收入', '非常规收入']; if (!state.nature || !natures.includes(state.nature)) state.nature = natures[0]; natureContainer.innerHTML = '';
-        natures.forEach(n => { const btn = document.createElement('div'); btn.className = `nature-btn ${state.nature === n ? 'active' : ''}`; btn.innerText = n; btn.onclick = () => { state.nature = n; renderCategories(); }; natureContainer.appendChild(btn); });
+        CATEGORIES[state.type].forEach(cat => { 
+            const el = document.createElement('div'); 
+            el.className = `cat-item ${state.cat1 === cat.id ? 'active' : ''}`; 
+            el.innerHTML = `<div class="icon">${cat.icon}</div><div>${cat.name}</div>`; 
+            el.onclick = () => { state.cat1 = cat.id; state.cat2 = cat.subs[0].name; renderCategories(); }; 
+            grid1.appendChild(el); 
+        });
+        
+        const list2 = document.getElementById('cat-level-2'); 
+        const currentCat = CATEGORIES[state.type].find(c => c.id === state.cat1); 
+        list2.innerHTML = '';
+        currentCat.subs.forEach(sub => { 
+            const el = document.createElement('div'); 
+            el.className = `sub-cat-item ${state.cat2 === sub.name ? 'active' : ''}`; 
+            el.innerHTML = `<span class="icon">${sub.icon}</span><div>${sub.name}</div>`; 
+            el.onclick = () => { state.cat2 = sub.name; renderCategories(); }; 
+            list2.appendChild(el); 
+        });
+        
+        const natureContainer = document.getElementById('nature-switch'); 
+        let natures = state.type === 'expense' ? ['必须开销', '非必要开销'] : ['常规收入', '非常规收入']; 
+        natureContainer.innerHTML = '';
+        natures.forEach(n => { 
+            const btn = document.createElement('div'); 
+            btn.className = `nature-btn ${state.nature === n ? 'active' : ''}`; 
+            btn.innerText = n; 
+            btn.onclick = () => { state.nature = n; renderCategories(); }; 
+            natureContainer.appendChild(btn); 
+        });
     }
 
     function saveRecord() {
         const amountInput = document.getElementById('input-amount'), remarkInput = document.getElementById('input-remark'), dateInput = document.getElementById('input-date');
-        const amount = parseFloat(amountInput.value); if (!amount || amount <= 0) return alert('请输入正确的金额！');
-        let selectedDate = new Date(); if(dateInput.value) { const parts = dateInput.value.split('-'); selectedDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0); }
+        const amount = parseFloat(amountInput.value); 
+        if (!amount || amount <= 0) return alert('请输入正确的金额！');
+        
+        let selectedDate = new Date(); 
+        if(dateInput.value) { 
+            const parts = dateInput.value.split('-'); 
+            selectedDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0); 
+        }
+        
         const newRecord = { id: Date.now().toString(), type: state.type, category1: state.cat1, category2: state.cat2, amount: amount, remark: remarkInput.value.trim(), nature: state.nature, date: selectedDate.toISOString() };
-        records.unshift(newRecord); localStorage.setItem('app_records', JSON.stringify(records)); updateHomeOverview();
+        records.unshift(newRecord); 
+        localStorage.setItem('app_records', JSON.stringify(records)); 
+        updateHomeOverview();
+        
         const dateStr = selectedDate.toISOString().substring(0, 10), typeStr = state.type === 'expense' ? '支出' : '收入', safeRemarkStr = (newRecord.remark || '无').replace(/,/g, '，');
         const clipData = `${newRecord.id},${dateStr},${typeStr},${newRecord.category1},${newRecord.category2},${newRecord.nature},${newRecord.amount.toFixed(2)},${safeRemarkStr}`;
-        navigator.clipboard.writeText(clipData).then(() => { amountInput.value = ''; remarkInput.value = ''; document.getElementById('input-date').valueAsDate = new Date(); setTimeout(() => { window.location.href = "shortcuts://run-shortcut?name=追加记账到Numbers"; }, 200); setTimeout(() => { alert('✅ 记账成功！正在尝试同步到 Numbers。'); }, 600); }).catch(err => { alert('复制失败。'); });
+        
+        navigator.clipboard.writeText(clipData).then(() => { 
+            amountInput.value = ''; 
+            remarkInput.value = ''; 
+            document.getElementById('input-date').valueAsDate = new Date(); 
+            
+            // 防止 Safari 后台限流导致重复触发
+            if (confirm('✅ 记账成功！数据已复制。\n点击“确定”跳转到快捷指令同步到 Numbers。')) {
+                goToShortcut('追加记账到Numbers');
+            }
+        }).catch(err => { 
+            alert('复制失败，请检查浏览器剪贴板权限。'); 
+        });
     }
 
-    // --- 核心修改：删除时调用快捷指令 ---
     function deleteRecord(id) {
         const record = records.find(r => r.id === id);
         if (!record) return;
-        if (!confirm('确定要删除这条记录吗？\n\n删除后本地移入回收站，并追加一条“已删除”记录到 Numbers 表格。')) return;
+        if (!confirm('确定要删除这条记录吗？\n删除后将同步到 Numbers 表格。')) return;
 
         record.deletedAt = new Date().toISOString(); 
         deletedRecords.unshift(record);
@@ -507,55 +297,53 @@
         records = records.filter(r => r.id !== id);
         localStorage.setItem('app_records', JSON.stringify(records));
         
-        renderBills(); updateHomeOverview();
+        renderBills(); 
+        updateHomeOverview();
 
-        // 构造发送给快捷指令的数据（在日期前加上【已删除】标识，方便在表格中区分）
         const dateStr = record.date.substring(0, 10); 
         const typeStr = record.type === 'expense' ? '支出' : '收入';
         const safeRemarkStr = (record.remark || '无').replace(/,/g, '，');
         
-        // 构造：已删除,ID,日期,类型,一级,二级,性质,金额,备注（共9项）
+        // 9 个字段，与 Numbers 表格对应
         const clipData = `已删除,${record.id},${dateStr},${typeStr},${record.category1},${record.category2},${record.nature},${record.amount.toFixed(2)},${safeRemarkStr}`;
 
         navigator.clipboard.writeText(clipData).then(() => {
-            setTimeout(() => {
-                window.location.href = "shortcuts://run-shortcut?name=记录已删除数据";
-            }, 200);
+            if (confirm('✅ 数据已复制。\n点击“确定”同步删除记录到 Numbers。')) {
+                goToShortcut('记录已删除数据');
+            }
         }).catch(err => {
             console.log('同步删除数据失败', err);
         });
     }
 
-    function renderDeletedRecords() {
-        const tbody = document.getElementById('deleted-tbody'); if (!tbody) return; tbody.innerHTML = '';
-        if (deletedRecords.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub); padding:20px 0;">暂无已删除记录</td></tr>'; return; }
-        deletedRecords.forEach(r => {
-            const tr = document.createElement('tr'); const delTime = r.deletedAt ? r.deletedAt.substring(5, 16).replace('T', ' ') : '--';
-            tr.innerHTML = `<td style="font-size:10px; color:#94A3B8;">${delTime}</td><td>${r.date.substring(5, 10).replace('-', '/')}</td><td>${r.category1}</td><td style="color:var(--red); font-weight:bold;">${r.amount.toFixed(2)}</td><td>${r.remark || ''}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
-    function clearDeletedRecords() { if (deletedRecords.length === 0) return alert('回收站是空的！'); if (confirm('⚠️ 确定要永久清空回收站吗？')) { deletedRecords = []; localStorage.removeItem('app_deleted_records'); renderDeletedRecords(); alert('✅ 已清空。'); } }
-    
-    function changeBillMonth(offset) { state.billsDate.setMonth(state.billsDate.getMonth() + offset); renderBills(); }
-    function changeSort(sortType) { state.billSort = sortType; document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active')); document.querySelectorAll('.sort-btn')[['date-desc', 'date-asc', 'amount-desc', 'amount-asc', 'cat1'].indexOf(sortType)].classList.add('active'); renderBills(); }
     function renderBills() {
         const y = state.billsDate.getFullYear(), m = state.billsDate.getMonth();
         document.getElementById('bill-month-label').innerText = `${y}年${m + 1}月`;
         const list = document.getElementById('bill-list'); list.innerHTML = '';
         let monthRecords = records.filter(r => { const d = new Date(r.date); return d.getFullYear() === y && d.getMonth() === m; });
-        monthRecords.sort((a, b) => { if (state.billSort === 'date-desc') return new Date(b.date) - new Date(a.date); if (state.billSort === 'date-asc') return new Date(a.date) - new Date(b.date); if (state.billSort === 'amount-desc') return b.amount - a.amount; if (state.billSort === 'amount-asc') return a.amount - b.amount; if (state.billSort === 'cat1') return a.category1.localeCompare(b.category1); return 0; });
+        
         if (monthRecords.length === 0) { list.innerHTML = '<div class="empty-tip">本月暂无记录~</div>'; return; }
+        
         monthRecords.forEach(r => {
-            const li = document.createElement('li'); li.className = 'bill-item'; let icon = '💸'; const catDef = CATEGORIES[r.type].find(c => c.id === r.category1); if (catDef) icon = catDef.icon;
-            const sign = r.type === 'expense' ? '-' : '+'; const amountClass = r.type === 'expense' ? 'expense' : 'income'; const dateStr = r.date.substring(5, 10).replace('-', '/'); const natureText = r.nature || (r.type === 'expense' ? '必须开销' : '常规收入');
-            li.innerHTML = `<div class="bill-left"><div class="bill-icon">${icon}</div><div class="bill-info"><div class="cat">${r.category1} · ${r.category2}</div><div class="sub"><span>${natureText}</span> | ${r.remark || '无备注'} | ${dateStr}</div></div></div><div style="display:flex; align-items:center;"><div class="bill-amount ${amountClass}">${sign}¥${r.amount.toFixed(2)}</div><button class="delete-btn" onclick="deleteRecord('${r.id}')">删除</button></div>`;
+            const li = document.createElement('li'); li.className = 'bill-item'; 
+            let icon = '💸'; 
+            const catDef = CATEGORIES[r.type].find(c => c.id === r.category1); 
+            if (catDef) icon = catDef.icon;
+            
+            const sign = r.type === 'expense' ? '-' : '+'; 
+            const amountClass = r.type === 'expense' ? 'expense' : 'income'; 
+            const dateStr = r.date.substring(5, 10).replace('-', '/'); 
+            
+            li.innerHTML = `<div class="bill-left"><div class="bill-icon">${icon}</div><div class="bill-info"><div class="cat">${r.category1} · ${r.category2}</div><div class="sub"><span>${r.nature}</span> | ${r.remark || '无备注'} | ${dateStr}</div></div></div><div style="display:flex; align-items:center;"><div class="bill-amount ${amountClass}">${sign}¥${r.amount.toFixed(2)}</div><button class="delete-btn" onclick="deleteRecord('${r.id}')">删除</button></div>`;
             list.appendChild(li);
         });
     }
 
-    // ... 后续的图表渲染、预算逻辑、导出逻辑保持不变，为节省篇幅省略
-    // 如果需要完整的，您可以直接用之前的，只要把 deleteRecord 替换成我上面这个即可。
+    // 月份切换逻辑
+    function changeHomeMonth(offset) { state.homeDate.setMonth(state.homeDate.getMonth() + offset); updateHomeOverview(); }
+    function changeBillMonth(offset) { state.billsDate.setMonth(state.billsDate.getMonth() + offset); renderBills(); }
+
+    init();
 </script>
 </body>
 </html>
