@@ -297,6 +297,12 @@
             <textarea id="budget-export-textarea" class="data-textarea" readonly placeholder="生成的预算文本会显示在这里..."></textarea>
         </div>
         <div class="card">
+            <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">导入预算数据</h3>
+            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">选择之前导出的预算 CSV 文件，数据将合并到现有预算中（同月份会覆盖）。</p>
+            <input type="file" id="import-budget-file" accept=".csv, text/csv" style="display: none;" onchange="importBudgetData(event)">
+            <button class="btn btn-primary" onclick="document.getElementById('import-budget-file').click()">📁 选择预算文件导入</button>
+        </div>
+        <div class="card">
             <h3 style="font-size:15px; margin-bottom:10px; font-weight:600;">导入数据恢复</h3>
             <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">选择之前导出的 `.csv` 文件，数据将自动追加到现有账单中。</p>
             <input type="file" id="import-file" accept=".csv, text/csv" style="display: none;" onchange="importData(event)">
@@ -485,7 +491,6 @@
         } catch(e){}
     }
 
-    // === 修改：webapp:// 回跳，直接唤起主屏幕 App ===
     function goToShortcut(name) {
         if (isSyncing) return;
         isSyncing = true;
@@ -1378,6 +1383,88 @@
         if (!csv) return alert('暂无预算数据可导出');
         document.getElementById('budget-export-textarea').value = csv;
         alert('生成成功！请在下方文本框中长按复制。');
+    }
+
+    // === 新增：预算导入 ===
+    function parseCSVLine(line) {
+        const result = [];
+        let cur = '', inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+                else inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+                result.push(cur); cur = '';
+            } else cur += ch;
+        }
+        result.push(cur);
+        return result;
+    }
+
+    function importBudgetData(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length < 2) { event.target.value = ''; return alert('文件为空或格式不正确'); }
+
+            let importedCount = 0;
+            const importedYears = new Set();
+
+            for (let i = 1; i < lines.length; i++) {
+                const cols = parseCSVLine(lines[i]);
+                if (cols.length < 14) continue;
+                const year = parseInt(String(cols[0]).trim());
+                const itemName = String(cols[1] || '').trim();
+                if (!year) continue;
+
+                if (!budgets[year] || typeof budgets[year] !== 'object') {
+                    budgets[year] = { depositRates: {} };
+                }
+                if (!budgets[year].depositRates) budgets[year].depositRates = {};
+
+                if (itemName.includes('存款比例')) {
+                    for (let m = 1; m <= 12; m++) {
+                        const v = cols[m + 1];
+                        if (v !== undefined && String(v).trim() !== '') {
+                            const num = parseFloat(v);
+                            if (!isNaN(num)) {
+                                budgets[year].depositRates[m - 1] = num;
+                                importedCount++;
+                            }
+                        }
+                    }
+                } else {
+                    const cat = CATEGORIES.expense.find(c => itemName.includes(c.name) || itemName === c.id);
+                    if (!cat) continue;
+                    for (let m = 1; m <= 12; m++) {
+                        const v = cols[m + 1];
+                        if (v !== undefined && String(v).trim() !== '') {
+                            const num = parseFloat(v);
+                            if (!isNaN(num)) {
+                                budgets[`${year}_${m}_${cat.id}`] = num;
+                                importedCount++;
+                            }
+                        }
+                    }
+                }
+                importedYears.add(year);
+            }
+
+            localStorage.setItem('app_budgets', JSON.stringify(budgets));
+
+            if (importedYears.has(state.budgetYear)) {
+                renderBudgetTable();
+            }
+            updateHomeOverview();
+
+            const yearsText = Array.from(importedYears).sort().join('、');
+            alert(`✅ 成功导入 ${importedCount} 条预算数据\n涉及年份：${yearsText}`);
+            event.target.value = '';
+        };
+        reader.readAsText(file);
     }
 
     function importData(event) {
