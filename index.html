@@ -389,6 +389,12 @@
     </div>
 
 <script>
+    // ==========================================
+    // 🚨 云端存储桶 ID (已根据你的截图填入) 🚨
+    // ==========================================
+    const BUCKET_ID = "EUDJRc2Hx5vG6JNUaDQciC"; 
+    const API_URL = `https://kvdb.io/${BUCKET_ID}/amount`;
+
     if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().then(granted => {}); }
     function safeParse(jsonStr, defaultVal) { 
         try { 
@@ -456,8 +462,8 @@
             updateRealCountdown(); 
             updateHomeOverview(); 
             
-            // 启动剪贴板自动填入
-            tryAutoFillFromClipboard();
+            // 启动云端获取金额逻辑
+            fetchAmountFromCloud();
 
             window.addEventListener('resize', () => {
                 if (monthlyChart) monthlyChart.resize();
@@ -466,43 +472,36 @@
         } catch(e) { console.error("Init Error:", e); }
     }
 
-    // === 新增：从剪贴板自动填入金额 ===
-    async function tryAutoFillFromClipboard() {
+    // === 核心逻辑：从云端获取金额并清空 ===
+    async function fetchAmountFromCloud() {
+        if (BUCKET_ID === "YOUR_BUCKET_ID") return; 
+        
         try {
-            // iOS 某些版本不允许页面加载时直接读取剪贴板，会抛出 NotAllowedError
-            if (navigator.clipboard && navigator.clipboard.readText) {
-                const text = await navigator.clipboard.readText();
-                processClipboardText(text);
+            // 加时间戳防止缓存
+            const res = await fetch(API_URL + '?t=' + Date.now());
+            if (!res.ok) return;
+            
+            const text = await res.text();
+            if (text && text.trim() !== '') {
+                const match = text.match(/\d+(\.\d{1,2})?/);
+                if (match && match[0]) {
+                    const amountInput = document.getElementById('input-amount');
+                    if (amountInput && !amountInput.value) {
+                        // 自动填入金额
+                        amountInput.value = match[0];
+                        amountInput.style.backgroundColor = '#E8F1FA';
+                        setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1500);
+                        showToast(`✨ 已提取金额: ${match[0]}`);
+                    }
+                }
+                
+                // 取出后立刻清空云端数据，防止下次打开重复填入
+                try {
+                    await fetch(API_URL, { method: 'DELETE' });
+                } catch(e) { console.log('清空云端失败', e); }
             }
         } catch (err) {
-            console.log('直接读取剪贴板失败，绑定第一次点击事件:', err);
-            // 如果直接读取失败（被系统拦截），则等待用户第一次触摸页面时读取
-            const triggerAutoFill = async () => {
-                try {
-                    const text = await navigator.clipboard.readText();
-                    processClipboardText(text);
-                } catch (e) {}
-                document.removeEventListener('touchstart', triggerAutoFill);
-                document.removeEventListener('click', triggerAutoFill);
-            };
-            document.addEventListener('touchstart', triggerAutoFill, { once: true });
-            document.addEventListener('click', triggerAutoFill, { once: true });
-        }
-    }
-
-    function processClipboardText(text) {
-        if (!text) return;
-        const match = text.match(/\d+(\.\d{1,2})?/);
-        if (match) {
-            const amountInput = document.getElementById('input-amount');
-            // 只有当输入框为空时才填入，防止覆盖用户手输
-            if (amountInput && !amountInput.value) {
-                amountInput.value = match[0];
-                amountInput.style.backgroundColor = '#E8F1FA';
-                setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1500);
-                // 填入后清空剪贴板，防止下次误触发
-                try { navigator.clipboard.writeText(''); } catch(e) {}
-            }
+            console.log('读取云端数据失败:', err);
         }
     }
 
@@ -511,12 +510,8 @@
         t.className = 'toast';
         t.innerText = msg;
         document.body.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; }, 1500);
-        setTimeout(() => { t.remove(); }, 1900);
-    }
-
-    function fillAmountFromURL() {
-        // 保留此空函数，防止老版本快捷指令传参时找不到函数报错
+        setTimeout(() => { t.style.opacity = '0'; }, 1800);
+        setTimeout(() => { t.remove(); }, 2200);
     }
 
     function goToShortcut(name) {
@@ -528,7 +523,6 @@
         if (isHttp) {
             const currentUrl = window.location.href.split('#')[0].split('?')[0];
             const hostAndPath = currentUrl.replace(/^https?:\/\//, '');
-            // 使用 webapp:// 尝试唤起主屏幕 App
             const callbackUrl = 'webapp://' + hostAndPath;
             url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(name) 
                 + "&x-success=" + encodeURIComponent(callbackUrl);
