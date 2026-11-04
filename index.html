@@ -172,20 +172,6 @@
         .bio-btn { margin: 8px 0 4px; padding: 11px; background: var(--primary-light); border-radius: 10px; color: var(--primary); font-weight: 700; cursor: pointer; text-align: center; font-size: 14px; border: 1px dashed var(--primary); user-select: none; }
         .bio-btn:active { background: #d8e8f7; }
         .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.78); color: white; padding: 12px 22px; border-radius: 10px; font-size: 14px; z-index: 99999; pointer-events: none; opacity: 1; transition: opacity 0.3s; white-space: nowrap; }
-        
-        /* 剪贴板悬浮按钮 */
-        .paste-helper-btn {
-            position: fixed; top: 25%; left: 50%; transform: translateX(-50%);
-            background: #333; color: #fff; padding: 12px 24px; border-radius: 30px;
-            font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            z-index: 10000; cursor: pointer; display: flex; align-items: center; gap: 8px;
-            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .paste-helper-btn:active { transform: translateX(-50%) scale(0.95); }
-        @keyframes bounceIn {
-            0% { opacity: 0; transform: translate(-50%, 20px) scale(0.9); }
-            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-        }
     </style>
 </head>
 <body>
@@ -469,10 +455,8 @@
             renderPaydayWeek(); 
             updateRealCountdown(); 
             updateHomeOverview(); 
+            fillAmountFromURL(); 
             
-            // 尝试自动读取剪贴板金额，并显示提示按钮
-            setTimeout(tryAutoFillFromClipboard, 500);
-
             window.addEventListener('resize', () => {
                 if (monthlyChart) monthlyChart.resize();
                 if (yearlyChart) yearlyChart.resize();
@@ -480,91 +464,31 @@
         } catch(e) { console.error("Init Error:", e); }
     }
 
-    // === 核心逻辑：尽最大可能填入金额 ===
-    async function tryAutoFillFromClipboard() {
-        const amountInput = document.getElementById('input-amount');
-        if (!amountInput) return;
-
-        let success = false;
-        try {
-            // 尝试静默读取剪贴板
-            if (navigator.clipboard && navigator.clipboard.readText) {
-                const text = await navigator.clipboard.readText();
-                if (text) {
-                    const match = text.match(/\d+(\.\d{1,2})?/);
-                    if (match && match[0]) {
-                        fillAmount(match[0]);
-                        success = true;
-                    }
-                }
-            }
-        } catch (err) {
-            console.log('静默读取被系统拦截，等待用户手势');
-        }
-
-        if (!success) {
-            // 如果静默失败，弹出一个大按钮供用户一键点击
-            showPasteHelper();
-            // 顺便把输入框聚焦，把键盘弹出来，方便用户直接点键盘上的剪贴板
-            amountInput.focus();
-        }
-    }
-
-    function fillAmount(val) {
-        const amountInput = document.getElementById('input-amount');
-        if (amountInput && !amountInput.value) {
-            amountInput.value = val;
-            amountInput.style.backgroundColor = '#E8F1FA';
-            setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1500);
-        }
-    }
-
-    function showPasteHelper() {
-        // 避免重复添加
-        if (document.getElementById('paste-helper-btn')) return;
-
-        const btn = document.createElement('div');
-        btn.id = 'paste-helper-btn';
-        btn.className = 'paste-helper-btn';
-        btn.innerHTML = '👇 点击自动填入金额';
-        
-        btn.onclick = async (e) => {
-            e.stopPropagation();
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text) {
-                    const match = text.match(/\d+(\.\d{1,2})?/);
-                    if (match && match[0]) {
-                        fillAmount(match[0]);
-                        btn.remove(); // 填入成功后消失
-                    } else {
-                        showToast('剪贴板中没有金额数字');
-                    }
-                }
-            } catch (err) {
-                showToast('读取失败，请长按金额框手动粘贴');
-            }
-        };
-        
-        document.body.appendChild(btn);
-
-        // 点击页面其他地方时，这个按钮会自动消失
-        setTimeout(() => {
-            document.body.addEventListener('touchstart', function removeBtn() {
-                const b = document.getElementById('paste-helper-btn');
-                if (b) b.remove();
-                document.body.removeEventListener('touchstart', removeBtn);
-            }, { once: true });
-        }, 1000);
-    }
-
     function showToast(msg) {
         const t = document.createElement('div');
         t.className = 'toast';
         t.innerText = msg;
         document.body.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; }, 1800);
-        setTimeout(() => { t.remove(); }, 2200);
+        setTimeout(() => { t.style.opacity = '0'; }, 1500);
+        setTimeout(() => { t.remove(); }, 1900);
+    }
+
+    function fillAmountFromURL() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const rawAmount = params.get('amount');
+            if (rawAmount) {
+                const match = rawAmount.match(/\d+(\.\d{1,2})?/);
+                if (match) {
+                    const amountInput = document.getElementById('input-amount');
+                    if (amountInput) {
+                        amountInput.value = match[0];
+                        amountInput.style.backgroundColor = '#E8F1FA';
+                        setTimeout(() => { amountInput.style.backgroundColor = 'transparent'; }, 1000);
+                    }
+                }
+            }
+        } catch(e){}
     }
 
     function goToShortcut(name) {
@@ -1392,7 +1316,7 @@
         document.getElementById('export-textarea').value = csv; alert('生成成功！请在下方文本框中长按复制。');
     }
 
-    // --- 预算导出导入 ---
+    // --- 预算导出 ---
     function getStoredBudgetValue(year, month, cat, isRatio) {
         if (isRatio) {
             const yr = budgets[year];
@@ -1461,6 +1385,7 @@
         alert('生成成功！请在下方文本框中长按复制。');
     }
 
+    // === 新增：预算导入 ===
     function parseCSVLine(line) {
         const result = [];
         let cur = '', inQuotes = false;
