@@ -172,6 +172,29 @@
         .bio-btn { margin: 8px 0 4px; padding: 11px; background: var(--primary-light); border-radius: 10px; color: var(--primary); font-weight: 700; cursor: pointer; text-align: center; font-size: 14px; border: 1px dashed var(--primary); user-select: none; }
         .bio-btn:active { background: #d8e8f7; }
         .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.78); color: white; padding: 12px 22px; border-radius: 10px; font-size: 14px; z-index: 99999; pointer-events: none; opacity: 1; transition: opacity 0.3s; white-space: nowrap; }
+
+        /* 金额栏粘贴按钮 */
+        .paste-btn {
+            flex-shrink: 0;
+            margin-left: 10px;
+            padding: 5px 12px;
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid #CBDDEC;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .paste-btn:active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            transform: scale(0.96);
+        }
     </style>
 </head>
 <body>
@@ -211,7 +234,11 @@
             <div class="nature-switch" id="nature-switch"></div>
         </div>
         <div class="card">
-            <div class="input-row"><div class="input-label">金额</div><input type="number" id="input-amount" class="input-field amount-input" placeholder="0.00" inputmode="decimal"></div>
+            <div class="input-row">
+                <div class="input-label">金额</div>
+                <input type="number" id="input-amount" class="input-field amount-input" placeholder="0.00" inputmode="decimal">
+                <button type="button" class="paste-btn" onclick="pasteAmount()">粘贴</button>
+            </div>
             <div class="input-row"><div class="input-label">日期</div><input type="date" id="input-date" class="input-field"></div>
             <div class="input-row"><div class="input-label">备注</div><input type="text" id="input-remark" class="input-field" placeholder="选填"></div>
         </div>
@@ -491,6 +518,33 @@
         } catch(e){}
     }
 
+    // --- 金额栏粘贴按钮逻辑 ---
+    async function pasteAmount() {
+        const input = document.getElementById('input-amount');
+        if (!input) return;
+        if (!(navigator.clipboard && navigator.clipboard.readText)) {
+            showToast('当前环境不支持读取剪贴板');
+            input.focus();
+            return;
+        }
+        try {
+            const text = await navigator.clipboard.readText();
+            const match = String(text || '').match(/\d+(\.\d{1,2})?/);
+            if (!match) {
+                showToast('剪贴板里没有找到金额');
+                input.focus();
+                return;
+            }
+            input.value = match[0];
+            input.style.backgroundColor = '#E8F1FA';
+            setTimeout(() => { input.style.backgroundColor = 'transparent'; }, 900);
+            showToast('已粘贴 ¥' + match[0]);
+        } catch (err) {
+            showToast('读取失败，请长按输入框手动粘贴');
+            input.focus();
+        }
+    }
+
     function goToShortcut(name) {
         if (isSyncing) return;
         isSyncing = true;
@@ -700,7 +754,7 @@
 
     function switchPage(pageId) {
         if ((pageId === 'bills' || pageId === 'dashboard' || pageId === 'budget' || pageId === 'data') && !state.isUnlocked) {
-            showPasswordModal(pageId);
+            showPasswordModal(pageId).catch(e => console.warn('showPasswordModal:', e));
             return;
         }
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -722,7 +776,20 @@
         if (pageId === 'data') { initExportDates(); previewData(); renderDeletedRecords(); } 
     }
 
+    // --- 解锁成功统一入口 ---
+    function unlockAndProceed() {
+        state.isUnlocked = true;
+        document.getElementById('passwordModal').classList.remove('active');
+        const p = state.pendingPage;
+        state.pendingPage = null;
+        if (p) switchPage(p);
+    }
+
+    // --- 验证弹窗：自动人脸 + 密码二选一 ---
     async function showPasswordModal(pageId) {
+        const modal = document.getElementById('passwordModal');
+        if (modal.classList.contains('active')) { state.pendingPage = pageId; return; }
+
         state.pendingPage = pageId;
         const pageNames = { bills: '账单', dashboard: '统计', budget: '预算', data: '我的' };
         document.getElementById('modalTitle').innerText = `🔒 查看${pageNames[pageId]}需验证`;
@@ -730,33 +797,60 @@
         document.getElementById('modalErrorMsg').style.display = 'none';
 
         const bioBtn = document.getElementById('bio-unlock-btn');
+        bioBtn.style.display = 'none';
+        bioBtn.onclick = null;
+
+        modal.classList.add('active');
+
+        const focusPwd = () => setTimeout(() => {
+            if (modal.classList.contains('active')) {
+                document.getElementById('modalPasswordInput').focus();
+            }
+        }, 100);
+
         let supported = false;
-        try { supported = canUseWebAuthn() && await isBiometricAvailable(); } catch(e) { supported = false; }
+        try {
+            supported = canUseWebAuthn() && await isBiometricAvailable();
+        } catch (e) { supported = false; }
+
+        if (!modal.classList.contains('active')) return;
 
         if (supported && bioCredentialId) {
             bioBtn.innerHTML = '👤 使用面容 / 指纹解锁';
             bioBtn.style.display = 'block';
-            bioBtn.onclick = tryBiometricUnlock;
-        } else if (supported && !bioCredentialId) {
+            bioBtn.onclick = () => tryBiometricUnlock(false);
+
+            await new Promise(r => setTimeout(r, 200));
+            if (!modal.classList.contains('active')) return;
+
+            const ok = await tryBiometricUnlock(true);
+            if (ok) return;
+            focusPwd();
+        } else if (supported) {
             bioBtn.innerHTML = '👤 首次使用？点击录入面容 / 指纹';
             bioBtn.style.display = 'block';
             bioBtn.onclick = async () => {
                 const ok = await registerBiometric();
-                if (ok) {
-                    bioBtn.innerHTML = '👤 使用面容 / 指纹解锁';
-                    bioBtn.onclick = tryBiometricUnlock;
-                }
+                if (ok) unlockAndProceed();
             };
+            focusPwd();
         } else {
             bioBtn.style.display = 'none';
+            focusPwd();
         }
-
-        document.getElementById('passwordModal').classList.add('active');
-        setTimeout(() => document.getElementById('modalPasswordInput').focus(), 120);
     }
 
     // --- 安全验证 ---
-    function verifyPasswordAndProceed() { const input = document.getElementById('modalPasswordInput').value; if (input === appPassword) { state.isUnlocked = true; document.getElementById('passwordModal').classList.remove('active'); if (state.pendingPage) { switchPage(state.pendingPage); state.pendingPage = null; } } else { document.getElementById('modalErrorMsg').style.display = 'block'; document.getElementById('modalPasswordInput').value = ''; document.getElementById('modalPasswordInput').focus(); } }
+    function verifyPasswordAndProceed() {
+        const input = document.getElementById('modalPasswordInput').value;
+        if (input === appPassword) {
+            unlockAndProceed();
+        } else {
+            document.getElementById('modalErrorMsg').style.display = 'block';
+            document.getElementById('modalPasswordInput').value = '';
+            document.getElementById('modalPasswordInput').focus();
+        }
+    }
     function closePasswordModal() { document.getElementById('passwordModal').classList.remove('active'); state.pendingPage = null; }
 
     document.addEventListener('visibilitychange', function() { 
@@ -890,11 +984,11 @@
         }
     }
 
-    async function tryBiometricUnlock() {
-        if (!bioCredentialId) return;
+    async function tryBiometricUnlock(silent) {
+        if (!bioCredentialId) return false;
         if (!(await isBiometricAvailable())) {
-            alert('当前设备不支持生物识别');
-            return;
+            if (!silent) alert('当前设备不支持生物识别');
+            return false;
         }
         try {
             const challenge = new Uint8Array(32);
@@ -911,19 +1005,16 @@
                     timeout: 60000
                 }
             });
-            state.isUnlocked = true;
-            document.getElementById('passwordModal').classList.remove('active');
-            if (state.pendingPage) {
-                switchPage(state.pendingPage);
-                state.pendingPage = null;
-            }
+            unlockAndProceed();
+            return true;
         } catch (err) {
             if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-                // 用户取消
+                // 用户取消，静默回到密码框
             } else {
                 console.warn('biometric get failed:', err);
-                alert('生物识别失败，请使用密码解锁');
+                if (!silent) alert('生物识别失败，请使用密码解锁');
             }
+            return false;
         }
     }
 
@@ -1385,7 +1476,7 @@
         alert('生成成功！请在下方文本框中长按复制。');
     }
 
-    // === 新增：预算导入 ===
+    // === 预算导入 ===
     function parseCSVLine(line) {
         const result = [];
         let cur = '', inQuotes = false;
