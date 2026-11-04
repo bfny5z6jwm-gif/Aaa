@@ -622,8 +622,8 @@
         for(let m=1; m<=12; m++) { trSave.innerHTML += `<td style="color:var(--text-main);font-weight:bold;" id="total-save-${state.budgetYear}-${m}">0</td>`; }
         tbody.appendChild(trSave);
 
+        // 包含「其他」行的分类预算
         CATEGORIES.expense.forEach(cat => {
-            if (cat.id === '其他') return;
             let tr = document.createElement('tr'); tr.innerHTML = `<td class="table-fixed-col">${cat.icon} ${cat.name}</td><td id="year-total-${cat.id}" style="font-weight:bold;">--</td>`;
             for(let m=1; m<=12; m++) {
                 const val = getInheritedBudget(state.budgetYear, m, cat.id);
@@ -664,9 +664,10 @@
         let tsEl = document.getElementById(`total-save-${year}-${month}`);
         if(tsEl) tsEl.innerText = totalSave > 0 ? totalSave.toFixed(0) : '0';
 
+        // 除餐饮外（包括「其他」）都计入已分配，餐饮 = 总预算 - 其余
         let otherSum = 0;
         CATEGORIES.expense.forEach(cat => {
-            if (cat.id === '其他' || cat.id === '餐饮') return;
+            if (cat.id === '餐饮') return;
             let input = document.getElementById(`budget-${year}-${month}-${cat.id}`);
             if (input && input.value) {
                 let val = parseFloat(input.value) || 0;
@@ -691,8 +692,8 @@
 
     function calcBudgetTable() {
         for (let m = 1; m <= 12; m++) { calcBudgetMonth(state.budgetYear, m); }
+        // 年度汇总也包含「其他」
         CATEGORIES.expense.forEach(cat => {
-            if (cat.id === '其他') return;
             let sum = 0;
             for(let m=1; m<=12; m++) {
                 const input = document.getElementById(`budget-${state.budgetYear}-${m}-${cat.id}`);
@@ -1440,7 +1441,8 @@
             }
         });
         const years = Array.from(yearSet).sort();
-        const catList = CATEGORIES.expense.filter(c => c.id !== '其他');
+        // 导出现包含「其他」，方便往返备份
+        const catList = CATEGORIES.expense;
         const rows = [];
         years.forEach(yearStr => {
             const year = parseInt(yearStr);
