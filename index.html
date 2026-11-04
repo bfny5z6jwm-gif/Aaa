@@ -522,17 +522,22 @@
     async function pasteAmount() {
         const input = document.getElementById('input-amount');
         if (!input) return;
+
+        // 先聚焦输入框，保持用户手势上下文，也给出视觉反馈
+        input.focus();
+
         if (!(navigator.clipboard && navigator.clipboard.readText)) {
-            showToast('当前环境不支持读取剪贴板');
-            input.focus();
+            showToast('请长按输入框手动粘贴');
             return;
         }
+
         try {
             const text = await navigator.clipboard.readText();
-            const match = String(text || '').match(/\d+(\.\d{1,2})?/);
+            // 去掉千分位逗号再匹配，兼容 1,200.50
+            const clean = String(text || '').replace(/,/g, '');
+            const match = clean.match(/\d+(\.\d{1,2})?/);
             if (!match) {
-                showToast('剪贴板里没有找到金额');
-                input.focus();
+                showToast('剪贴板里没有金额');
                 return;
             }
             input.value = match[0];
@@ -540,8 +545,13 @@
             setTimeout(() => { input.style.backgroundColor = 'transparent'; }, 900);
             showToast('已粘贴 ¥' + match[0]);
         } catch (err) {
-            showToast('读取失败，请长按输入框手动粘贴');
-            input.focus();
+            // iOS 上用户拒绝授权会走这里
+            if (err && err.name === 'NotAllowedError') {
+                showToast('已拒绝读取，请长按输入框选择"粘贴"');
+            } else {
+                showToast('读取失败，请长按输入框手动粘贴');
+            }
+            input.select();
         }
     }
 
